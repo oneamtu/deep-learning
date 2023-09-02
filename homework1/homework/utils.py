@@ -36,7 +36,7 @@ class SuperTuxDataset(Dataset):
         Your code here
         return a tuple: img, label
         """
-        image = read_image(self.items[idx][0])
+        image = read_image(f'{self.dataset_path}/{self.items[idx][0]}')
         print(image)
         print(image.dtype)
         return (image, self.items[idx][1])
