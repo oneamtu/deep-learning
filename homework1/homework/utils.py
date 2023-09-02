@@ -21,7 +21,7 @@ class SuperTuxDataset(Dataset):
         with open(f'{dataset_path}/labels.csv') as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
             next(csv_reader, None) # skip headers
-            self.items = [(row['file'], LABEL_NAMES.index(row['label']))
+            self.items = [(row[0], LABEL_NAMES.index(row[1]))
                           for row in csv_reader]
 
 
