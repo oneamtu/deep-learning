@@ -62,7 +62,7 @@ class MLPClassifier(torch.nn.Module):
         @x: torch.Tensor((B,3,64,64))
         @return: torch.Tensor((B,6))
         """
-        return self.linear.forward(x.view(-1, IMAGE_LINEAR_SIZE))
+        return self.model.forward(x.view(-1, IMAGE_LINEAR_SIZE))
 
 
 model_factory = {
