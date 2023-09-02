@@ -1,0 +1,4 @@
+data
+dense_data
+**/__pycache__/
+*.zip

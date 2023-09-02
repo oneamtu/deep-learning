@@ -1,7 +1,10 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
-from utils import IMAGE_SIZE, LABEL_NAMES
+from .utils import IMAGE_SIZE, LABEL_NAMES
+IMAGE_LINEAR_SIZE = IMAGE_SIZE[0] * IMAGE_SIZE[1] * IMAGE_SIZE[2]
+MIDDLE_LINEAR_SIZE = IMAGE_SIZE[0] * IMAGE_SIZE[1]
 
 class ClassificationLoss(torch.nn.Module):
     def forward(self, input, target):
@@ -27,7 +30,7 @@ class LinearClassifier(torch.nn.Module):
         """
         Your code here
         """
-        self.linear = torch.nn.Linear(IMAGE_SIZE, len(LABEL_NAMES))
+        self.model = nn.Linear(IMAGE_LINEAR_SIZE, len(LABEL_NAMES))
 
     def forward(self, x):
         """
@@ -36,7 +39,7 @@ class LinearClassifier(torch.nn.Module):
         @x: torch.Tensor((B,3,64,64))
         @return: torch.Tensor((B,6))
         """
-        return self.linear.forward(x)
+        return self.model.forward(x.view(-1, IMAGE_LINEAR_SIZE))
 
 
 class MLPClassifier(torch.nn.Module):
@@ -46,7 +49,11 @@ class MLPClassifier(torch.nn.Module):
         """
         Your code here
         """
-        raise NotImplementedError('MLPClassifier.__init__')
+        self.model = nn.Sequential(
+            nn.Linear(IMAGE_LINEAR_SIZE, MIDDLE_LINEAR_SIZE),
+            nn.ReLU(),
+            nn.Linear(MIDDLE_LINEAR_SIZE, len(LABEL_NAMES)),
+            nn.ReLU())
 
     def forward(self, x):
         """
@@ -55,7 +62,7 @@ class MLPClassifier(torch.nn.Module):
         @x: torch.Tensor((B,3,64,64))
         @return: torch.Tensor((B,6))
         """
-        raise NotImplementedError('MLPClassifier.forward')
+        return self.linear.forward(x.view(-1, IMAGE_LINEAR_SIZE))
 
 
 model_factory = {
