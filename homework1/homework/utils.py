@@ -2,9 +2,11 @@ from PIL import Image
 
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
+from torchvision.io import read_image
+
+import csv
 
 LABEL_NAMES = ['background', 'kart', 'pickup', 'nitro', 'bomb', 'projectile']
-
 
 class SuperTuxDataset(Dataset):
     def __init__(self, dataset_path):
@@ -14,21 +16,27 @@ class SuperTuxDataset(Dataset):
 
         WARNING: Do not perform data normalization here. 
         """
-        raise NotImplementedError('SuperTuxDataset.__init__')
+        self.dataset_path = dataset_path
+
+        with open(f'{dataset_path}/labels.csv') as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            self.items = [(row[0], LABEL_NAMES.index(row[1])) for row in csv_reader]
 
     def __len__(self):
         """
         Your code here
         """
-        raise NotImplementedError('SuperTuxDataset.__len__')
+        return len(self.items)
 
     def __getitem__(self, idx):
         """
         Your code here
         return a tuple: img, label
         """
-        raise NotImplementedError('SuperTuxDataset.__getitem__')
-
+        image = read_image(self.items[idx][0])
+        print(image)
+        print(image.dtype)
+        return (image, self.items[idx][1])
 
 def load_data(dataset_path, num_workers=0, batch_size=128):
     dataset = SuperTuxDataset(dataset_path)
