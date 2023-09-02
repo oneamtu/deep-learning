@@ -7,6 +7,7 @@ from torchvision.io import read_image
 
 import csv
 
+IMAGE_SIZE = (3, 64, 64)
 LABEL_NAMES = ['background', 'kart', 'pickup', 'nitro', 'bomb', 'projectile']
 
 class SuperTuxDataset(Dataset):

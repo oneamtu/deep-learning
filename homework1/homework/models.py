@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 
+from utils import IMAGE_SIZE, LABEL_NAMES
 
 class ClassificationLoss(torch.nn.Module):
     def forward(self, input, target):
@@ -16,7 +17,7 @@ class ClassificationLoss(torch.nn.Module):
 
         Hint: Don't be too fancy, this is a one-liner
         """
-        raise NotImplementedError('ClassificationLoss.forward')
+        return torch.nn.CrossEntropyLoss()(input, target)
 
 
 class LinearClassifier(torch.nn.Module):
@@ -26,7 +27,7 @@ class LinearClassifier(torch.nn.Module):
         """
         Your code here
         """
-        raise NotImplementedError('LinearClassifier.__init__')
+        self.linear = torch.nn.Linear(IMAGE_SIZE, len(LABEL_NAMES))
 
     def forward(self, x):
         """
@@ -35,7 +36,7 @@ class LinearClassifier(torch.nn.Module):
         @x: torch.Tensor((B,3,64,64))
         @return: torch.Tensor((B,6))
         """
-        raise NotImplementedError('LinearClassifier.forward')
+        return self.linear.forward(x)
 
 
 class MLPClassifier(torch.nn.Module):
