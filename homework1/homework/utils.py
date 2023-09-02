@@ -1,5 +1,6 @@
 from PIL import Image
 
+import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from torchvision.io import read_image
@@ -37,9 +38,8 @@ class SuperTuxDataset(Dataset):
         return a tuple: img, label
         """
         image = read_image(f'{self.dataset_path}/{self.items[idx][0]}')
-        print(image)
-        print(image.dtype)
-        return (image, self.items[idx][1])
+        float_image = transforms.functional.convert_image_dtype(image, torch.float32)
+        return (float_image, self.items[idx][1])
 
 def load_data(dataset_path, num_workers=0, batch_size=128):
     dataset = SuperTuxDataset(dataset_path)
