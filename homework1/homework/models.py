@@ -52,8 +52,7 @@ class MLPClassifier(torch.nn.Module):
         self.model = nn.Sequential(
             nn.Linear(IMAGE_LINEAR_SIZE, MIDDLE_LINEAR_SIZE),
             nn.ReLU(),
-            nn.Linear(MIDDLE_LINEAR_SIZE, len(LABEL_NAMES)),
-            nn.ReLU())
+            nn.Linear(MIDDLE_LINEAR_SIZE, len(LABEL_NAMES)))
 
     def forward(self, x):
         """

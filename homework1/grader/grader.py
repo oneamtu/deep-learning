@@ -1,5 +1,5 @@
 import sys
-
+from traceback import print_tb
 
 class CheckFailed(Exception):
     def __init__(self, why):
@@ -58,6 +58,7 @@ def case(func, kwargs={}, score=1, extra_credit=False):
             except NotImplementedError as e:
                 msg = 'Function not implemented %s' % e
             except Exception as e:
+                print_tb(e)
                 msg = 'Crash "%s"' % e
             total += 1
         return int(n_passed * score / total + 0.5), msg
