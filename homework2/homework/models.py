@@ -4,7 +4,7 @@ class CNNClassifier(torch.nn.Module):
     class Block(torch.nn.Module):
         def __init__(self, n_input, n_output, stride=1):
             """
-            2 layers of Conv2d
+            2 layers of Conv2d, ReLU, first with stride
             """
             super().__init__()
             self.block = torch.nn.Sequential(
@@ -35,7 +35,7 @@ class CNNClassifier(torch.nn.Module):
         y = self.network(x)
         # Global average pooling
         y = y.mean(dim=[2,3])
-        return self.classifier(y)[:,0]
+        return self.classifier(y)
 
 
 def save_model(model):
