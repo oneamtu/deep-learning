@@ -34,6 +34,7 @@ def train(args):
 
         total_loss = 0.
         train_accuracy = 0.
+        train_u_accuracy = 0.
 
         for i, (train_features, train_labels) in enumerate(training_data):
             train_features, train_labels = train_features.to(device), train_labels.to(device)
@@ -49,10 +50,12 @@ def train(args):
             optimizer.step()
 
             total_loss += loss.cpu().detach().item()
-            train_accuracy += y_hat.cpu().detach().argmax(dim=1).eq(train_labels).float().mean()
+            train_accuracy += y_hat.argmax(dim=1).eq(train_labels).float().mean().cpu().detach().item()
+            train_u_accuracy += accuracy(y_hat, train_labels).cpu().detach().item()
 
         train_logger.add_scalar('train/total_loss', total_loss, epoch*len(training_data) + i)
         train_logger.add_scalar('train/accuracy', train_accuracy / i, epoch*len(training_data) + i)
+        train_logger.add_scalar('train/u_accuracy', train_u_accuracy / i, epoch*len(training_data) + i)
 
         # enable eval mode
         model.eval()
