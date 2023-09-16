@@ -1,8 +1,6 @@
 from .models import CNNClassifier, save_model
 from .utils import accuracy, load_data
 import torch
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-print('device = ', device)
 import torch.utils.tensorboard as tb
 
 from torch import optim
@@ -13,8 +11,11 @@ def train(args):
     """
     Training loop for CNNClassifier.
     """
+    device = torch.device('cuda') if args.cuda and torch.cuda.is_available() else torch.device('cpu')
+    print('device = ', device)
+
     from os import path
-    model = CNNClassifier()
+    model = CNNClassifier().to(device)
     train_logger, valid_logger = None, None
     if args.log_dir is not None:
         train_logger = tb.SummaryWriter(path.join(args.log_dir, 'train'))
@@ -35,6 +36,8 @@ def train(args):
         train_accuracy = 0.
 
         for i, (train_features, train_labels) in enumerate(training_data):
+            train_features, train_labels = train_features.to(device), train_labels.to(device)
+
             y_hat = model.forward(train_features)
             loss = torch.nn.CrossEntropyLoss().forward(y_hat, train_labels)
             total_loss += loss
@@ -45,8 +48,8 @@ def train(args):
             loss.backward()
             optimizer.step()
 
-            total_loss += loss.detach().item()
-            train_accuracy += y_hat.detach().argmax(dim=1).eq(train_labels).float().mean()
+            total_loss += loss.cpu().detach().item()
+            train_accuracy += y_hat.cpu().detach().argmax(dim=1).eq(train_labels).float().mean()
 
         train_logger.add_scalar('train/total_loss', total_loss, epoch*len(training_data) + i)
         train_logger.add_scalar('train/accuracy', train_accuracy / i, epoch*len(training_data) + i)
@@ -58,12 +61,13 @@ def train(args):
         validation_accuracy = 0.
 
         for validation_features, validation_labels in validation_data:
+            validation_features, validation_labels = validation_features.to(device), validation_labels.to(device)
             y_hat = model.forward(validation_features)
             validation_loss = torch.nn.CrossEntropyLoss().forward(y_hat, validation_labels)
 
             total_validation_loss += validation_loss
             # validation_accuracy += y_hat.detach().argmax(dim=1).eq(train_labels).float().mean()
-            validation_accuracy += accuracy(y_hat, validation_labels)
+            validation_accuracy += accuracy(y_hat, validation_labels).cpu()
         
         valid_logger.add_scalar('validation/total_loss', total_loss, epoch*len(validation_data) + i)
         valid_logger.add_scalar('validation/accuracy', validation_accuracy / i, epoch*len(validation_data) + i)
@@ -80,7 +84,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--log_dir')
-    parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--cuda', type=bool, default=False)
     # Put custom arguments here
 
     args = parser.parse_args()
