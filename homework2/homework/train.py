@@ -1,9 +1,10 @@
 from .models import CNNClassifier, save_model
 from .utils import accuracy, load_data
 import torch
+from torch import optim
 import torch.utils.tensorboard as tb
 
-from torch import optim
+import numpy as np
 
 import pdb
 
@@ -33,8 +34,7 @@ def train(args):
         model.train()
 
         total_loss = 0.
-        train_accuracy = 0.
-        train_u_accuracy = 0.
+        train_accuracies = []
 
         for i, (train_features, train_labels) in enumerate(training_data):
             train_features, train_labels = train_features.to(device), train_labels.to(device)
@@ -50,18 +50,17 @@ def train(args):
             optimizer.step()
 
             total_loss += loss.cpu().detach().item()
-            train_accuracy += y_hat.argmax(dim=1).eq(train_labels).float().mean().cpu().detach().item()
-            train_u_accuracy += accuracy(y_hat, train_labels).cpu().detach().item()
+            train_accuracies.append(accuracy(y_hat, train_labels).cpu().detach().item())
 
+        train_accuracy = np.mean(train_accuracies)
         train_logger.add_scalar('train/total_loss', total_loss, epoch*len(training_data) + i)
-        train_logger.add_scalar('train/accuracy', train_accuracy / i, epoch*len(training_data) + i)
-        train_logger.add_scalar('train/u_accuracy', train_u_accuracy / i, epoch*len(training_data) + i)
+        train_logger.add_scalar('train/accuracy', train_accuracy, epoch*len(training_data) + i)
 
         # enable eval mode
         model.eval()
 
         total_validation_loss = 0.
-        validation_accuracy = 0.
+        validation_accuracies = []
 
         for validation_features, validation_labels in validation_data:
             validation_features, validation_labels = validation_features.to(device), validation_labels.to(device)
@@ -70,10 +69,14 @@ def train(args):
 
             total_validation_loss += validation_loss
             # validation_accuracy += y_hat.detach().argmax(dim=1).eq(train_labels).float().mean()
-            validation_accuracy += accuracy(y_hat, validation_labels).cpu()
+            validation_accuracies.append(accuracy(y_hat, validation_labels).cpu().detach().item())
         
+        validation_accuracy = np.mean(validation_accuracies)
         valid_logger.add_scalar('validation/total_loss', total_loss, epoch*len(validation_data) + i)
-        valid_logger.add_scalar('validation/accuracy', validation_accuracy / i, epoch*len(validation_data) + i)
+        valid_logger.add_scalar('validation/accuracy', validation_accuracy, epoch*len(validation_data) + i)
+        print(f'''Epoch {epoch+1}/{args.epochs} | Train Loss: {total_loss} 
+              | Train Accuracy: {train_accuracy} | Validation Accuracy: {validation_accuracy}''')
+
         # Early stopping - needs patience
         # if total_validation_loss > prev_loss and prev_loss > 0:
         #    break;
