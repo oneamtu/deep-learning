@@ -1,6 +1,8 @@
 from .models import CNNClassifier, save_model
 from .utils import accuracy, load_data
 import torch
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+print('device = ', device)
 import torch.utils.tensorboard as tb
 
 from torch import optim
