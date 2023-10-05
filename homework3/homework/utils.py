@@ -3,6 +3,9 @@ from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from torchvision.transforms import functional as F
+from torchvision.io import read_image
+
+import csv
 
 from . import dense_transforms
 
@@ -11,31 +14,37 @@ DENSE_LABEL_NAMES = ['background', 'kart', 'track', 'bomb/projectile', 'pickup/n
 # Distribution of classes on dense training set (background and track dominate (96%)
 DENSE_CLASS_DISTRIBUTION = [0.52683655, 0.02929112, 0.4352989, 0.0044619, 0.00411153]
 
-
 class SuperTuxDataset(Dataset):
     def __init__(self, dataset_path):
         """
         Your code here
-        Hint: Use your solution (or the master solution) to HW1 / HW2
-        Hint: If you're loading (and storing) PIL images here, make sure to call image.load(),
-              to avoid an OS error for too many open files.
-        Hint: Do not store torch.Tensor's as data here, but use PIL images, torchvision.transforms expects PIL images
-              for most transformations.
+        Hint: Use the python csv library to parse labels.csv
+
+        WARNING: Do not perform data normalization here. 
         """
-        raise NotImplementedError('SuperTuxDataset.__init__')
+        self.dataset_path = dataset_path
+
+        with open(f'{dataset_path}/labels.csv') as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            next(csv_reader, None) # skip headers
+            self.items = [(row[0], LABEL_NAMES.index(row[1]))
+                          for row in csv_reader]
+
 
     def __len__(self):
         """
         Your code here
         """
-        raise NotImplementedError('SuperTuxDataset.__len__')
+        return len(self.items)
 
     def __getitem__(self, idx):
         """
         Your code here
+        return a tuple: img, label
         """
-        raise NotImplementedError('SuperTuxDataset.__getitem__')
-        return img, label
+        image = read_image(f'{self.dataset_path}/{self.items[idx][0]}')
+        float_image = transforms.functional.convert_image_dtype(image, torch.float32)
+        return (float_image, self.items[idx][1])
 
 
 class DenseSuperTuxDataset(Dataset):
@@ -71,6 +80,10 @@ def load_dense_data(dataset_path, num_workers=0, batch_size=32, **kwargs):
 
 def _one_hot(x, n):
     return (x.view(-1, 1) == torch.arange(n, dtype=x.dtype, device=x.device)).int()
+
+def accuracy(outputs, labels):
+    outputs_idx = outputs.max(1)[1].type_as(labels)
+    return outputs_idx.eq(labels).float().mean()
 
 
 class ConfusionMatrix(object):
@@ -120,7 +133,6 @@ class ConfusionMatrix(object):
     @property
     def per_class(self):
         return self.matrix / (self.matrix.sum(1, keepdims=True) + 1e-5)
-
 
 if __name__ == '__main__':
     dataset = DenseSuperTuxDataset('dense_data/train', transform=dense_transforms.Compose(
