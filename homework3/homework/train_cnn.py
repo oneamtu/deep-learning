@@ -8,7 +8,8 @@ import torch.utils.tensorboard as tb
 import numpy as np
 
 # ~87% accuracy, 30-40 epochs
-# Input normalization
+# !python3 -m homework.train_cnn --log_dir log_bn --batch_size 32 --epochs 30 --cuda True
+# Input normalization - 90% accuracy, 30 epochs
 # Residual blocks
 # Dropout
 # Data augmentations (Both geometric and color augmentations are important. Be aggressive here. Different levels of supertux have radically different lighting.)
@@ -43,6 +44,8 @@ def train(args):
         total_loss = 0.
         train_accuracies = []
 
+        print(f"CUDA Memory used beginning of epoch: {torch.cuda.memory_allocated()}")
+
         for i, (train_features, train_labels) in enumerate(training_data):
             train_features, train_labels = train_features.to(device), train_labels.to(device)
 
@@ -65,6 +68,8 @@ def train(args):
 
         # enable eval mode
         model.eval()
+
+        print(f"CUDA Memory used after train: {torch.cuda.memory_allocated()}")
 
         total_validation_loss = 0.
         validation_accuracies = []
