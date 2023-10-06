@@ -7,6 +7,14 @@ import torch.utils.tensorboard as tb
 
 import numpy as np
 
+# ~87% accuracy, 30-40 epochs
+# Input normalization
+# Residual blocks
+# Dropout
+# Data augmentations (Both geometric and color augmentations are important. Be aggressive here. Different levels of supertux have radically different lighting.)
+# Weight regularization
+# Early stopping
+
 def train(args):
     """
     Training loop for CNNClassifier.
@@ -21,7 +29,7 @@ def train(args):
         train_logger = tb.SummaryWriter(path.join(args.log_dir, 'train'))
         valid_logger = tb.SummaryWriter(path.join(args.log_dir, 'valid'))
 
-    training_data = load_data('data/train')
+    training_data = load_data('data/train', batch_size=args.batch_size)
     validation_data = load_data('data/valid')
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999))
@@ -89,6 +97,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--log_dir', default='log')
+    parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--cuda', type=bool, default=False)
     # Put custom arguments here
