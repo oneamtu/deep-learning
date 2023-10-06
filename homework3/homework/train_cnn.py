@@ -84,8 +84,8 @@ def train(args):
             validation_accuracies.append(accuracy(y_hat, validation_labels).cpu().detach().item())
         
         validation_accuracy = np.mean(validation_accuracies)
-        valid_logger.add_scalar('total_loss', total_loss, epoch*len(validation_data) + i)
-        valid_logger.add_scalar('accuracy', validation_accuracy, epoch*len(validation_data) + i)
+        valid_logger.add_scalar('total_loss', total_loss, epoch*len(training_data) + i)
+        valid_logger.add_scalar('accuracy', validation_accuracy, epoch*len(training_data) + i)
         print(f'''Epoch {epoch+1}/{args.epochs} | Train Loss: {total_loss} 
               | Train Accuracy: {train_accuracy} | Validation Accuracy: {validation_accuracy}''')
 
