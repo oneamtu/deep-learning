@@ -51,7 +51,6 @@ def train(args):
 
             y_hat = model.forward(train_features)
             loss = torch.nn.CrossEntropyLoss().forward(y_hat, train_labels)
-            total_loss += loss
 
             train_logger.add_scalar('loss', loss, epoch*len(training_data) + i)
 
@@ -77,14 +76,11 @@ def train(args):
         for validation_features, validation_labels in validation_data:
             validation_features, validation_labels = validation_features.to(device), validation_labels.to(device)
             y_hat = model.forward(validation_features)
-            validation_loss = torch.nn.CrossEntropyLoss().forward(y_hat, validation_labels)
 
-            total_validation_loss += validation_loss
             # validation_accuracy += y_hat.detach().argmax(dim=1).eq(train_labels).float().mean()
             validation_accuracies.append(accuracy(y_hat, validation_labels).cpu().detach().item())
         
         validation_accuracy = np.mean(validation_accuracies)
-        valid_logger.add_scalar('total_loss', total_loss, epoch*len(training_data) + i)
         valid_logger.add_scalar('accuracy', validation_accuracy, epoch*len(training_data) + i)
         print(f'''Epoch {epoch+1}/{args.epochs} | Train Loss: {total_loss} 
               | Train Accuracy: {train_accuracy} | Validation Accuracy: {validation_accuracy}''')
