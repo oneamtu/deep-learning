@@ -35,7 +35,8 @@ def train(args):
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999))
 
-    prev_loss = 0
+    max_validation_accuracy = 0
+    worse_epochs = 0
 
     for epoch in range(int(args.epochs)):
         # enable train mode
@@ -70,7 +71,6 @@ def train(args):
 
         print(f"CUDA Memory used after train: {torch.cuda.memory_allocated()}")
 
-        total_validation_loss = 0.
         validation_accuracies = []
 
         for validation_features, validation_labels in validation_data:
@@ -86,11 +86,16 @@ def train(args):
               | Train Accuracy: {train_accuracy} | Validation Accuracy: {validation_accuracy}''')
 
         # Early stopping - needs patience
-        # if total_validation_loss > prev_loss and prev_loss > 0:
-        #    break;
-        prev_loss = total_validation_loss
+        if max_validation_accuracy < validation_accuracy:
+            max_validation_accuracy = validation_accuracy
+            save_model(model)
+            worse_epochs = 0
+        else:
+            worse_epochs += 1
+        
+        if worse_epochs >= args.patience:
+            break
 
-    save_model(model)
 
 
 if __name__ == '__main__':
@@ -100,6 +105,7 @@ if __name__ == '__main__':
     parser.add_argument('--log_dir', default='log')
     parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--patience', type=int, default=5)
     parser.add_argument('--cuda', type=bool, default=False)
     # Put custom arguments here
 
