@@ -8,9 +8,16 @@ import torch.utils.tensorboard as tb
 import numpy as np
 
 # ~87% accuracy, 30-40 epochs
+
 # !python3 -m homework.train_cnn --log_dir log_bn --batch_size 32 --epochs 30 --cuda True
 # Input normalization - 90% accuracy, 30 epochs
-# Residual blocks
+
+# !python3 -m homework.train_cnn --log_dir log_bn_residual --batch_size 512 --epochs 30 --patience 20 --cuda True
+# bigger batch not necessarily better; batch size 512 worse than 32
+
+# !python3 -m homework.train_cnn --log_dir log_bn_residual --batch_size 64 --epochs 30 --patience 20 --cuda True
+# Residual blocks - 91 max, could go for longer
+
 # Dropout
 # Data augmentations (Both geometric and color augmentations are important. Be aggressive here. Different levels of supertux have radically different lighting.)
 # Weight regularization
@@ -34,6 +41,7 @@ def train(args):
     validation_data = load_data('data/valid')
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999))
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)
 
     max_validation_accuracy = 0
     worse_epochs = 0
@@ -47,13 +55,16 @@ def train(args):
 
         print(f"CUDA Memory used beginning of epoch: {torch.cuda.memory_allocated()}")
 
+        global_step = 0
+
         for i, (train_features, train_labels) in enumerate(training_data):
             train_features, train_labels = train_features.to(device), train_labels.to(device)
 
             y_hat = model.forward(train_features)
             loss = torch.nn.CrossEntropyLoss().forward(y_hat, train_labels)
 
-            train_logger.add_scalar('loss', loss, epoch*len(training_data) + i)
+            global_step = epoch*len(training_data) + i
+            train_logger.add_scalar('loss', loss, global_step)
 
             optimizer.zero_grad()
             loss.backward()
@@ -63,8 +74,8 @@ def train(args):
             train_accuracies.append(accuracy(y_hat, train_labels).cpu().detach().item())
 
         train_accuracy = np.mean(train_accuracies)
-        train_logger.add_scalar('total_loss', total_loss, epoch*len(training_data) + i)
-        train_logger.add_scalar('accuracy', train_accuracy, epoch*len(training_data) + i)
+        train_logger.add_scalar('total_loss', total_loss, global_step)
+        train_logger.add_scalar('accuracy', train_accuracy, global_step)
 
         # enable eval mode
         model.eval()
@@ -82,8 +93,12 @@ def train(args):
         
         validation_accuracy = np.mean(validation_accuracies)
         valid_logger.add_scalar('accuracy', validation_accuracy, epoch*len(training_data) + i)
-        print(f'''Epoch {epoch+1}/{args.epochs} | Train Loss: {total_loss} 
-              | Train Accuracy: {train_accuracy} | Validation Accuracy: {validation_accuracy}''')
+
+        train_logger.add_scalar('lr', optimizer.param_groups[0]['lr'], global_step)
+        scheduler.step(validation_accuracy)
+
+        print(f"Epoch {epoch+1}/{args.epochs} | Train Loss: {total_loss} LR: {optimizer.param_groups[0]['lr']} " +
+              f"| Train Accuracy: {train_accuracy} | Validation Accuracy: {validation_accuracy}")
 
         # Early stopping - needs patience
         if max_validation_accuracy < validation_accuracy:
@@ -94,9 +109,8 @@ def train(args):
             worse_epochs += 1
         
         if worse_epochs >= args.patience:
+            print(f"Stopping at epoch {epoch}: max accuracy {max_validation_accuracy}")
             break
-
-
 
 if __name__ == '__main__':
     import argparse
