@@ -44,7 +44,7 @@ def train(args):
         valid_logger = tb.SummaryWriter(path.join(args.log_dir, 'valid'))
 
     training_data = load_data('data/train', batch_size=args.batch_size, 
-                              random_crop=(32, 32), random_horizontal_flip=True)
+                              random_crop=(64, 64), random_horizontal_flip=True)
     validation_data = load_data('data/valid')
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999))
@@ -124,7 +124,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--log_dir', default='log')
-    parser.add_argument('--batch_size', type=int, default=64)
+    parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--patience', type=int, default=5)
     parser.add_argument('--cuda', type=bool, default=False)

@@ -147,7 +147,7 @@ class ConfusionMatrix(object):
         return self.matrix / (self.matrix.sum(1, keepdims=True) + 1e-5)
 
 if __name__ == '__main__':
-    dataset = SuperTuxDataset('data/train', random_crop=(32, 32), random_horizontal_flip=True)
+    dataset = SuperTuxDataset('data/train', random_crop=(64, 64), random_horizontal_flip=True)
     # dataset = DenseSuperTuxDataset('dense_data/train', transform=dense_transforms.Compose(
     #     [dense_transforms.RandomHorizontalFlip(), dense_transforms.ToTensor()]))
     from pylab import show, imshow, subplot, axis
