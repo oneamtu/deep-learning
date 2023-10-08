@@ -52,7 +52,7 @@ class SuperTuxDataset(Dataset):
     def get_transform(self):
         transform = []
         if self.random_crop is not None:
-            transform.append(transforms.RandomResizedCrop(self.random_crop, antialias=True))
+            transform.append(transforms.RandomResizedCrop(self.random_crop))
         if self.random_horizontal_flip:
             transform.append(transforms.RandomHorizontalFlip())
         transform.append(transforms.ConvertImageDtype(torch.float32))
@@ -147,9 +147,8 @@ class ConfusionMatrix(object):
         return self.matrix / (self.matrix.sum(1, keepdims=True) + 1e-5)
 
 if __name__ == '__main__':
-    dataset = SuperTuxDataset('data/train', random_crop=(64, 64), random_horizontal_flip=True)
-    # dataset = DenseSuperTuxDataset('dense_data/train', transform=dense_transforms.Compose(
-    #     [dense_transforms.RandomHorizontalFlip(), dense_transforms.ToTensor()]))
+    dataset = DenseSuperTuxDataset('dense_data/train', transform=dense_transforms.Compose(
+        [dense_transforms.RandomHorizontalFlip(), dense_transforms.ToTensor()]))
     from pylab import show, imshow, subplot, axis
 
     for i in range(15):
@@ -158,12 +157,12 @@ if __name__ == '__main__':
         imshow(F.to_pil_image(im))
         axis('off')
         subplot(5, 6, 2 * i + 2)
-        # imshow(dense_transforms.label_to_pil_image(lbl))
+        imshow(dense_transforms.label_to_pil_image(lbl))
         axis('off')
     show()
     import numpy as np
 
     c = np.zeros(5)
-    # for im, lbl in dataset:
-    #     c += np.bincount(lbl.view(-1), minlength=len(DENSE_LABEL_NAMES))
+    for im, lbl in dataset:
+        c += np.bincount(lbl.view(-1), minlength=len(DENSE_LABEL_NAMES))
     print(100 * c / np.sum(c))
