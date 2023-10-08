@@ -35,6 +35,7 @@ class CNNClassifier(torch.nn.Module):
         self.network = torch.nn.Sequential(*[
             self.Block(i, o, stride=2) for i, o in zip([n_input_channels, *layers[:-1]], layers)
         ])
+        self.dropout = torch.nn.Dropout()
         self.classifier = torch.nn.Linear(layers[-1], 6)
 
     def forward(self, x):
@@ -45,6 +46,7 @@ class CNNClassifier(torch.nn.Module):
         y = self.network(x)
         # Global average pooling
         y = y.mean(dim=[2,3])
+        y = self.dropout(y)
         return self.classifier(y)
 
 class FCN(torch.nn.Module):
