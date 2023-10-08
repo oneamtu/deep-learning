@@ -15,25 +15,39 @@ import numpy as np
 # !python3 -m homework.train_cnn --log_dir log_bn_residual --batch_size 512 --epochs 30 --patience 20 --cuda True
 # bigger batch not necessarily better; batch size 512 worse than 32
 
-# !python3 -m homework.train_cnn --log_dir log_bn_residual --batch_size 64 --epochs 30 --patience 20 --cuda True
-# Residual blocks - 91 max, could go for longer
-
-# Dropout
-
-# Data augmentations (Both geometric and color augmentations are important. Be aggressive here. Different levels of supertux have radically different lighting.)
-# crop defaults don't work great
-# flip good
-# Stopping at epoch 38: max accuracy 0.9149553571428571
-# !python3 -m homework.train_cnn --log_dir log_bn_residual_lr_sched --batch_size 128 --epochs 60 --patience 15 --cuda True
-
-# Weight regularization
-
 # Early stopping -- helpful for capturing max
 # LR schedule - helpful to stabilize convergence; try higher LR default to see if faster convergence.
 # !python3 -m homework.train_cnn --log_dir log_bn_residual_lr_sched --batch_size 128 --epochs 60 --patience 15 --cuda True
 # Stopping at epoch 34: max accuracy 0.9091517857142857
 # !python3 -m homework.train_cnn --log_dir log_bn_residual_lr_sched --batch_size 128 --epochs 60 --patience 15 --cuda True
 # Stopping at epoch 39: max accuracy 0.8911830357142857 start_lr: 0.01
+
+# !python3 -m homework.train_cnn --log_dir log_bn_residual --batch_size 64 --epochs 30 --patience 20 --cuda True
+# Residual blocks - 91 max, could go for longer
+
+# Data augmentations (Both geometric and color augmentations are important. Be aggressive here. Different levels of supertux have radically different lighting.)
+# crop defaults don't work great
+# flip good
+# Stopping at epoch 38: max accuracy 0.9149553571428571
+# !python3 -m homework.train_cnn --log_dir log_bn_residual_lr_sched --batch_size 128 --epochs 60 --patience 15 --cuda True
+# ColorJitter
+# !python3 -m homework.train_cnn --log_dir log_data_aug --batch_size 128 --epochs 60 --patience 15 --cuda True
+# Stopping at epoch 39: max accuracy 0.9073660714285714
+
+# Dropout
+# !python3 -m homework.train_cnn --log_dir log_data_aug_dropout --batch_size 128 --epochs 60 --patience 15 --cuda True
+# Stopping at epoch 33: max accuracy 0.9100446428571428
+
+# Milestone
+# Stopping at epoch 67: max accuracy 0.9136160714285714
+# !python3 -m homework.train_cnn --log_dir log_data_aug_dropout --batch_size 128 --epochs 100 --patience 30 --cuda True
+# Seemingly max hit at jut flipping. More aggressive jitter or dropout?
+
+# RandomAug
+# Weight regularization
+# SGD
+# input normalization
+# high values for the color jitter.
 
 def train(args):
     """
@@ -54,7 +68,7 @@ def train(args):
     validation_data = load_data('data/valid')
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999))
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=10)
 
     max_validation_accuracy = 0
     worse_epochs = 0
