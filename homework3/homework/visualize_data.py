@@ -4,7 +4,7 @@ from .utils import LABEL_NAMES, SuperTuxDataset
 
 
 def visualize_data(args):
-    dataset = SuperTuxDataset(args.dataset, random_crop=(64, 64), random_horizontal_flip=True)
+    dataset = SuperTuxDataset(args.dataset, random_augment=True)
 
     f, axes = plt.subplots(args.n, len(LABEL_NAMES))
 

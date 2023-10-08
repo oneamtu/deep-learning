@@ -15,7 +15,7 @@ DENSE_LABEL_NAMES = ['background', 'kart', 'track', 'bomb/projectile', 'pickup/n
 DENSE_CLASS_DISTRIBUTION = [0.52683655, 0.02929112, 0.4352989, 0.0044619, 0.00411153]
 
 class SuperTuxDataset(Dataset):
-    def __init__(self, dataset_path, random_crop=None, random_horizontal_flip=False):
+    def __init__(self, dataset_path, random_augment=False):
         """
         Your code here
         Hint: Use the python csv library to parse labels.csv
@@ -23,9 +23,7 @@ class SuperTuxDataset(Dataset):
         WARNING: Do not perform data normalization here. 
         """
         self.dataset_path = dataset_path
-        self.random_crop = random_crop
-        self.random_horizontal_flip = random_horizontal_flip
-        self.transform = self.get_transform()
+        self.transform = self.get_transform(random_augment)
 
         with open(f'{dataset_path}/labels.csv') as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
@@ -49,12 +47,12 @@ class SuperTuxDataset(Dataset):
         image = self.transform(raw_image)
         return (image, self.items[idx][1])
     
-    def get_transform(self):
+    def get_transform(self, random_augment):
         transform = []
-        if self.random_crop is not None:
-            transform.append(transforms.RandomResizedCrop(self.random_crop))
-        if self.random_horizontal_flip:
+        if random_augment:
+            # transform.append(transforms.RandomResizedCrop(self.random_crop))
             transform.append(transforms.RandomHorizontalFlip())
+            transform.append(transforms.ColorJitter())
         transform.append(transforms.ConvertImageDtype(torch.float32))
         return transforms.Compose(transform)
 

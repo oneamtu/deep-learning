@@ -19,7 +19,13 @@ import numpy as np
 # Residual blocks - 91 max, could go for longer
 
 # Dropout
+
 # Data augmentations (Both geometric and color augmentations are important. Be aggressive here. Different levels of supertux have radically different lighting.)
+# crop defaults don't work great
+# flip good
+# Stopping at epoch 38: max accuracy 0.9149553571428571
+# !python3 -m homework.train_cnn --log_dir log_bn_residual_lr_sched --batch_size 128 --epochs 60 --patience 15 --cuda True
+
 # Weight regularization
 
 # Early stopping -- helpful for capturing max
@@ -44,7 +50,7 @@ def train(args):
         valid_logger = tb.SummaryWriter(path.join(args.log_dir, 'valid'))
 
     training_data = load_data('data/train', batch_size=args.batch_size, 
-                              random_crop=(64, 64), random_horizontal_flip=True)
+                              random_augment=True)
     validation_data = load_data('data/valid')
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999))
