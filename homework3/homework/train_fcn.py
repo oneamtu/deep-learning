@@ -27,7 +27,7 @@ def train(args):
     validation_data = load_dense_data('dense_data/valid')
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999))
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=10)
 
     max_validation_accuracy = 0
     worse_epochs = 0
@@ -83,12 +83,13 @@ def train(args):
 
             valid_confusion_matrix.add(y_hat.argmax(1), validation_labels)
 
-            if logged_valid_image:
+            if not logged_valid_image:
                 log(valid_logger, validation_features, validation_labels, y_hat, global_step)
                 logged_valid_image = True
         
-        validation_accuracy = valid_confusion_matrix.global_accuracy.cpu().detach().item()
-        valid_logger.add_scalar('accuracy', validation_accuracy, global_step)
+        validation_accuracy = valid_confusion_matrix.global_accuracy * valid_confusion_matrix.iou
+        validation_accuracy = validation_accuracy.cpu().detach().item()
+        valid_logger.add_scalar('accuracy', valid_confusion_matrix.global_accuracy, global_step)
         valid_logger.add_scalar('avg_accuracy', valid_confusion_matrix.average_accuracy, global_step)
         valid_logger.add_scalar('iou', valid_confusion_matrix.iou, global_step)
 
@@ -98,7 +99,6 @@ def train(args):
         print(f"Epoch {epoch+1}/{args.epochs} | Train Loss: {total_loss} | LR: {optimizer.param_groups[0]['lr']} " +
               f"| Train Accuracy: {train_accuracy} | Validation Accuracy: {validation_accuracy}")
 
-        # Early stopping - needs patience
         if max_validation_accuracy < validation_accuracy:
             max_validation_accuracy = validation_accuracy
             save_model(model)
