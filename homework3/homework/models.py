@@ -64,6 +64,7 @@ class CNNClassifier(torch.nn.Module):
         Using blocks of Conv2d
         """
         super().__init__()
+        self.first_conv = torch.nn.Conv2d(n_input_channels, layers[0], kernel_size=3, padding=1)
         self.network = torch.nn.Sequential(*[
             DownBlock(i, o, stride=2) for i, o in zip([n_input_channels, *layers[:-1]], layers)
         ])
@@ -75,7 +76,8 @@ class CNNClassifier(torch.nn.Module):
         @x: torch.Tensor((B,3,64,64))
         @return: torch.Tensor((B,6))
         """
-        y = self.network(x)
+        y = self.first_conv(x)
+        y = self.network(y)
         # Global average pooling
         y = y.mean(dim=[2,3])
         y = self.dropout(y)
