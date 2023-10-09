@@ -53,13 +53,14 @@ def train(args):
         global_step = 0
 
         train_confusion_matrix = ConfusionMatrix()
+        class_weights = 1. / torch.tensor(DENSE_CLASS_DISTRIBUTION)
 
         for i, (train_features, train_labels) in enumerate(training_data):
             train_features, train_labels = train_features.to(device), train_labels.to(device)
 
             y_hat = model.forward(train_features)
             # NOTE: adjust weights?
-            loss = torch.nn.CrossEntropyLoss().forward(y_hat, train_labels)
+            loss = torch.nn.CrossEntropyLoss(weight=class_weights).forward(y_hat, train_labels)
 
             global_step = epoch*len(training_data) + i
             train_logger.add_scalar('loss', loss, global_step)
