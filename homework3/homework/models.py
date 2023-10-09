@@ -59,14 +59,14 @@ class UpBlock(torch.nn.Module):
         return self.concat_block(torch.cat((up_x, skip_x), dim=1)) + residual_x
 
 class CNNClassifier(torch.nn.Module):
-    def __init__(self, layers = [32, 64, 128], n_input_channels = 3):
+    def __init__(self, layers = [32, 64, 128, 256], n_input_channels = 3):
         """
         Using blocks of Conv2d
         """
         super().__init__()
         self.first_conv = torch.nn.Conv2d(n_input_channels, layers[0], kernel_size=3, padding=1)
         self.network = torch.nn.Sequential(*[
-            DownBlock(i, o, stride=2) for i, o in zip([n_input_channels, *layers[:-1]], layers)
+            DownBlock(i, o, stride=2) for i, o in zip(layers[:-1], layers[1:])
         ])
         self.dropout = torch.nn.Dropout()
         self.classifier = torch.nn.Linear(layers[-1], 6)
