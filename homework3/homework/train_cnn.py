@@ -46,10 +46,14 @@ import numpy as np
 # Weight regularization
 # high values for the color jitter.
 # more layers?
+# accuracy = 0.954
+
+# input normalization
+# !python3 -m homework.train_cnn --log_dir log_input_norm --batch_size 128 --epochs 100 --patience 20 --cuda True
+# accuracy = 0.954
 
 # RandomAug
 # SGD
-# input normalization
 # MaxPool
 
 def train(args):
