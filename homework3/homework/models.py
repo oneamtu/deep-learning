@@ -81,7 +81,6 @@ class CNNClassifier(torch.nn.Module):
 
 class FCN(torch.nn.Module):
     def __init__(self, layers = [32, 64, 128, 256], n_input_channels = 3):
-        super().__init__()
         """
         Your code here.
         Hint: The FCN can be a bit smaller the the CNNClassifier since you need to run it at a higher resolution
@@ -92,12 +91,12 @@ class FCN(torch.nn.Module):
         """
         super().__init__()
         self.first_conv = torch.nn.Conv2d(n_input_channels, layers[0], kernel_size=3, padding=1)
-        self.downs = [
+        self.downs = torch.nn.ModuleList([
             DownBlock(i, o, stride=2) for i, o in zip(layers[:-1], layers[1:])
-        ]
-        self.ups = [
+        ])
+        self.ups = torch.nn.ModuleList([
             UpBlock(i, o, stride=2) for o, i in zip(layers[:-1], layers[1:])
-        ]
+        ])
         self.dropout = torch.nn.Dropout()
         self.classifier = torch.nn.Conv2d(layers[0], 5, kernel_size=1)
 
@@ -111,6 +110,8 @@ class FCN(torch.nn.Module):
               if required (use z = z[:, :, :H, :W], where H and W are the height and width of a corresponding strided
               convolution
         """
+        # print("BLAH")
+        # print(x.shape)
         skip_ys = []
         y = self.first_conv(x)
 
@@ -118,8 +119,11 @@ class FCN(torch.nn.Module):
             skip_ys.append(y)
             y = down(y)
         
+        # print("roller")
         for up in reversed(self.ups):
             skip_y = skip_ys.pop()
+            # print(skip_y.shape)
+            # print(y.shape)
             y = up(y, skip_y)
 
         y = self.dropout(y)

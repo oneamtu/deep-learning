@@ -22,9 +22,9 @@ def train(args):
         train_logger = tb.SummaryWriter(path.join(args.log_dir, 'train'), flush_secs=1)
         valid_logger = tb.SummaryWriter(path.join(args.log_dir, 'valid'), flush_secs=1)
 
-    training_data = load_dense_data('../dense_data/train', batch_size=args.batch_size, 
+    training_data = load_dense_data('dense_data/train', batch_size=args.batch_size,
                               random_augment=True)
-    validation_data = load_dense_data('../dense_data/valid')
+    validation_data = load_dense_data('dense_data/valid')
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999))
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)
