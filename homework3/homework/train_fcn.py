@@ -53,7 +53,7 @@ def train(args):
         global_step = 0
 
         train_confusion_matrix = ConfusionMatrix()
-        class_weights = 1. / torch.tensor(DENSE_CLASS_DISTRIBUTION)
+        class_weights = 1. / torch.tensor(DENSE_CLASS_DISTRIBUTION).to(device)
 
         for i, (train_features, train_labels) in enumerate(training_data):
             train_features, train_labels = train_features.to(device), train_labels.to(device)
