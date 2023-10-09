@@ -15,6 +15,12 @@ import pdb
 # - Global accuracy                                    [ 0.807 ]
 # - Intersection over Union                            [ 0.613 ]
 
+# w/ first 16 layer
+# Stopping at epoch 63: max accuracy 0.592182993888855
+# * Trained FCN Grader                                
+#   - Global accuracy                                    [ 0.888 ]
+#   - Intersection over Union                            [ 0.667 ]
+
 def train(args):
     from os import path
 
