@@ -69,7 +69,7 @@ def train(args):
                               random_augment=True)
     validation_data = load_data('data/valid')
 
-    optimizer = optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999))
+    optimizer = optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999), weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=10)
 
     max_validation_accuracy = 0
