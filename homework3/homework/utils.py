@@ -156,6 +156,72 @@ class ConfusionMatrix(object):
         return self.matrix / (self.matrix.sum(1, keepdims=True) + 1e-5)
 
 if __name__ == '__main__':
+    # NOTE: code for mean/stddev was taken from this post
+    # https://stackoverflow.com/questions/60101240/finding-mean-and-standard-deviation-across-image-channels-pytorch
+    loader = load_data('data/train')
+    nimages = 0
+    mean = 0.0
+    var = 0.0
+    for i_batch, batch_target in enumerate(loader):
+        batch = batch_target[0]
+        # Rearrange batch to be the shape of [B, C, W * H]
+        batch = batch.view(batch.size(0), batch.size(1), -1)
+        # Update total number of images
+        nimages += batch.size(0)
+        # Compute mean and std here
+        mean += batch.mean(2).sum(0) 
+        var += batch.var(2).sum(0)
+
+    loader = load_data('data/valid')
+    for i_batch, batch_target in enumerate(loader):
+        batch = batch_target[0]
+        # Rearrange batch to be the shape of [B, C, W * H]
+        batch = batch.view(batch.size(0), batch.size(1), -1)
+        # Update total number of images
+        nimages += batch.size(0)
+        # Compute mean and std here
+        mean += batch.mean(2).sum(0) 
+        var += batch.var(2).sum(0)
+
+    mean /= nimages
+    var /= nimages
+    std = torch.sqrt(var)
+
+    print(f"Dataset mean: {mean}")
+    print(f"Dataset std: {std}")
+
+    loader = load_dense_data('dense_data/train')
+    nimages = 0
+    mean = 0.0
+    var = 0.0
+    for i_batch, batch_target in enumerate(loader):
+        batch = batch_target[0]
+        # Rearrange batch to be the shape of [B, C, W * H]
+        batch = batch.view(batch.size(0), batch.size(1), -1)
+        # Update total number of images
+        nimages += batch.size(0)
+        # Compute mean and std here
+        mean += batch.mean(2).sum(0) 
+        var += batch.var(2).sum(0)
+
+    loader = load_dense_data('dense_data/valid')
+    for i_batch, batch_target in enumerate(loader):
+        batch = batch_target[0]
+        # Rearrange batch to be the shape of [B, C, W * H]
+        batch = batch.view(batch.size(0), batch.size(1), -1)
+        # Update total number of images
+        nimages += batch.size(0)
+        # Compute mean and std here
+        mean += batch.mean(2).sum(0) 
+        var += batch.var(2).sum(0)
+
+    mean /= nimages
+    var /= nimages
+    std = torch.sqrt(var)
+
+    print(f"Dense Dataset mean: {mean}")
+    print(f"Dense Dataset std: {std}")
+
     dataset = DenseSuperTuxDataset('dense_data/train', transform=dense_transforms.Compose(
         [dense_transforms.RandomHorizontalFlip(), dense_transforms.ToTensor()]))
     from pylab import show, imshow, subplot, axis

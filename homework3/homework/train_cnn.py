@@ -43,12 +43,13 @@ import numpy as np
 # !python3 -m homework.train_cnn --log_dir log_data_aug_dropout --batch_size 128 --epochs 100 --patience 30 --cuda True
 # Seemingly max hit at jut flipping. More aggressive jitter or dropout?
 
-# RandomAug
 # Weight regularization
-# SGD
-# input normalization
 # high values for the color jitter.
 # more layers?
+
+# RandomAug
+# SGD
+# input normalization
 # MaxPool
 
 def train(args):

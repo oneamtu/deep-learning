@@ -1,5 +1,5 @@
 import torch
-import torch.nn.functional as F
+from torchvision.transforms import functional as F
 
 import numpy as np
 
@@ -76,7 +76,8 @@ class CNNClassifier(torch.nn.Module):
         @x: torch.Tensor((B,3,64,64))
         @return: torch.Tensor((B,6))
         """
-        y = self.first_conv(x)
+        normal_x = F.normalize(x, [0.3320, 0.3219, 0.3267], [0.1922, 0.1739, 0.1801])
+        y = self.first_conv(normal_x)
         y = self.network(y)
         # Global average pooling
         y = y.mean(dim=[2,3])
@@ -116,7 +117,9 @@ class FCN(torch.nn.Module):
         """
         max_scale_layers = int(np.log2(min(x.shape[-1], x.shape[-2])))
         skip_ys = []
-        y = self.first_conv(x)
+
+        normal_x = F.normalize(x, [0.2801, 0.2499, 0.2446], [0.1922, 0.1739, 0.1801])
+        y = self.first_conv(normal_x)
 
         for down in self.downs[:max_scale_layers]:
             skip_ys.append(y)
