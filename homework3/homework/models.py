@@ -85,7 +85,7 @@ class CNNClassifier(torch.nn.Module):
         return self.classifier(y)
 
 class FCN(torch.nn.Module):
-    def __init__(self, layers = [32, 64, 128, 256, 512], n_input_channels = 3):
+    def __init__(self, layers = [16, 32, 64, 128, 256], n_input_channels = 3):
         """
         Your code here.
         Hint: The FCN can be a bit smaller the the CNNClassifier since you need to run it at a higher resolution
