@@ -48,6 +48,8 @@ import numpy as np
 # SGD
 # input normalization
 # high values for the color jitter.
+# more layers?
+# MaxPool
 
 def train(args):
     """
@@ -60,8 +62,8 @@ def train(args):
     model = CNNClassifier().to(device)
     train_logger, valid_logger = None, None
     if args.log_dir is not None:
-        train_logger = tb.SummaryWriter(path.join(args.log_dir, 'train'))
-        valid_logger = tb.SummaryWriter(path.join(args.log_dir, 'valid'))
+        train_logger = tb.SummaryWriter(path.join(args.log_dir, 'train'), flush_secs=1)
+        valid_logger = tb.SummaryWriter(path.join(args.log_dir, 'valid'), flush_secs=1)
 
     training_data = load_data('data/train', batch_size=args.batch_size, 
                               random_augment=True)
@@ -119,7 +121,7 @@ def train(args):
             validation_accuracies.append(accuracy(y_hat, validation_labels).cpu().detach().item())
         
         validation_accuracy = np.mean(validation_accuracies)
-        valid_logger.add_scalar('accuracy', validation_accuracy, epoch*len(training_data) + i)
+        valid_logger.add_scalar('accuracy', validation_accuracy, global_step)
 
         train_logger.add_scalar('lr', optimizer.param_groups[0]['lr'], global_step)
         scheduler.step(validation_accuracy)

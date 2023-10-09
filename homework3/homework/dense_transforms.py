@@ -83,7 +83,7 @@ def label_to_tensor(lbl):
     """
     Reads a PIL pallet Image img and convert the indices to a pytorch tensor
     """
-    return torch.as_tensor(np.array(lbl, np.uint8, copy=False))
+    return torch.as_tensor(np.array(lbl, np.longlong, copy=False))
 
 
 def label_to_pil_image(lbl):

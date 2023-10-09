@@ -58,13 +58,16 @@ class SuperTuxDataset(Dataset):
 
 
 class DenseSuperTuxDataset(Dataset):
-    def __init__(self, dataset_path, transform=dense_transforms.ToTensor()):
+    def __init__(self, dataset_path, transform=None, random_augment=False):
         from glob import glob
         from os import path
         self.files = []
         for im_f in glob(path.join(dataset_path, '*_im.jpg')):
             self.files.append(im_f.replace('_im.jpg', ''))
-        self.transform = transform
+        if transform is None:
+            self.transform = self.get_transform(random_augment)
+        else:
+            self.transform = transform
 
     def __len__(self):
         return len(self.files)
@@ -77,6 +80,14 @@ class DenseSuperTuxDataset(Dataset):
             im, lbl = self.transform(im, lbl)
         return im, lbl
 
+    def get_transform(self, random_augment):
+        transform = []
+        if random_augment:
+            # transform.append(transforms.RandomResizedCrop(self.random_crop))
+            transform.append(dense_transforms.RandomHorizontalFlip())
+            transform.append(dense_transforms.ColorJitter())
+        transform.append(dense_transforms.ToTensor())
+        return dense_transforms.Compose(transform)
 
 def load_data(dataset_path, num_workers=0, batch_size=128, **kwargs):
     dataset = SuperTuxDataset(dataset_path, **kwargs)
