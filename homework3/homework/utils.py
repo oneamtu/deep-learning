@@ -52,7 +52,7 @@ class SuperTuxDataset(Dataset):
         if random_augment:
             # transform.append(transforms.RandomResizedCrop(self.random_crop))
             transform.append(transforms.RandomHorizontalFlip())
-            transform.append(transforms.ColorJitter())
+            transform.append(transforms.ColorJitter(brightness=2., saturation=.5))
         transform.append(transforms.ConvertImageDtype(torch.float32))
         return transforms.Compose(transform)
 
@@ -85,7 +85,7 @@ class DenseSuperTuxDataset(Dataset):
         if random_augment:
             # transform.append(transforms.RandomResizedCrop(self.random_crop))
             transform.append(dense_transforms.RandomHorizontalFlip())
-            transform.append(dense_transforms.ColorJitter())
+            transform.append(dense_transforms.ColorJitter(brightness=2., saturation=.5))
         transform.append(dense_transforms.ToTensor())
         return dense_transforms.Compose(transform)
 
