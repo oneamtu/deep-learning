@@ -63,11 +63,11 @@ def train(args):
             if i == 0:
                 log(train_logger, train_features, train_labels, y_hat, global_step)
 
-        train_accuracy = train_confusion_matrix.global_accuracy().cpu().detach().item()
+        train_accuracy = train_confusion_matrix.global_accuracy.cpu().detach().item()
         train_logger.add_scalar('total_loss', total_loss, global_step)
         train_logger.add_scalar('accuracy', train_accuracy, global_step)
-        train_logger.add_scalar('avg_accuracy', train_confusion_matrix.average_accuracy(), global_step)
-        train_logger.add_scalar('iou', train_confusion_matrix.iou(), global_step)
+        train_logger.add_scalar('avg_accuracy', train_confusion_matrix.average_accuracy, global_step)
+        train_logger.add_scalar('iou', train_confusion_matrix.iou, global_step)
 
         # enable eval mode
         model.eval()
@@ -87,10 +87,10 @@ def train(args):
                 log(valid_logger, validation_features, validation_labels, y_hat, global_step)
                 logged_valid_image = True
         
-        validation_accuracy = valid_confusion_matrix.global_accuracy().cpu().detach().item()
+        validation_accuracy = valid_confusion_matrix.global_accuracy.cpu().detach().item()
         valid_logger.add_scalar('accuracy', validation_accuracy, global_step)
-        valid_logger.add_scalar('avg_accuracy', valid_confusion_matrix.average_accuracy(), global_step)
-        valid_logger.add_scalar('iou', valid_confusion_matrix.iou(), global_step)
+        valid_logger.add_scalar('avg_accuracy', valid_confusion_matrix.average_accuracy, global_step)
+        valid_logger.add_scalar('iou', valid_confusion_matrix.iou, global_step)
 
         train_logger.add_scalar('lr', optimizer.param_groups[0]['lr'], global_step)
         scheduler.step(validation_accuracy)
