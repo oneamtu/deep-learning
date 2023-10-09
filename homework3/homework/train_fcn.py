@@ -10,6 +10,11 @@ import torch.utils.tensorboard as tb
 
 import pdb
 
+# !python3 -m homework.train_fcn --log_dir log_1 --batch_size 64 --epochs 40 --patience 15 --cuda True
+# * Trained FCN Grader                                
+# - Global accuracy                                    [ 0.807 ]
+# - Intersection over Union                            [ 0.613 ]
+
 def train(args):
     from os import path
 

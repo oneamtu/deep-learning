@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
 
+import numpy as np
+
 import pdb
 
 class DownBlock(torch.nn.Module):
@@ -110,20 +112,16 @@ class FCN(torch.nn.Module):
               if required (use z = z[:, :, :H, :W], where H and W are the height and width of a corresponding strided
               convolution
         """
-        # print("BLAH")
-        # print(x.shape)
+        max_scale_layers = int(np.log2(min(x.shape[-1], x.shape[-2])))
         skip_ys = []
         y = self.first_conv(x)
 
-        for down in self.downs:
+        for down in self.downs[:max_scale_layers]:
             skip_ys.append(y)
             y = down(y)
         
-        # print("roller")
-        for up in reversed(self.ups):
+        for up in reversed(self.ups[:max_scale_layers]):
             skip_y = skip_ys.pop()
-            # print(skip_y.shape)
-            # print(y.shape)
             y = up(y, skip_y)
 
         y = self.dropout(y)
