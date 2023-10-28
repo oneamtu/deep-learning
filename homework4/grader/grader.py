@@ -60,6 +60,7 @@ def case(func, kwargs={}, score=1, extra_credit=False):
                 msg = 'Function not implemented %s' % e
             except Exception as e:
                 msg = 'Crash "%s"' % e
+                print_tb(e)
             total += 1
         return int(n_passed * score / total + 0.5), msg
 

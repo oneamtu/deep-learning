@@ -14,16 +14,16 @@ def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
                 heatmap value at the peak. Return no more than max_det peaks per image
     """
     heatmap.to(device)
-    raw_peaks = F.max_pool2d(heatmap[None, None], max_pool_ks, return_indices=True)
-    min_score_filter = torch.ge(raw_peaks[0], min_score)
-    peaks = torch.tensor([
-        raw_peaks[0][min_score_filter],
-        torch.remainder(raw_peaks[1][min_score_filter], heatmap.shape[1]),
-        torch.div(raw_peaks[1][min_score_filter], heatmap.shape[1])],
-        device=device
-    )
-    print(peaks[0])
-    return torch.topk(peaks, max_det, dim=0)
+    max_peaks, max_indices = F.max_pool2d(heatmap[None, None], max_pool_ks, return_indices=True)
+    top_peaks, top_indices = torch.topk(max_peaks.view(-1), min(max_det, len(max_peaks.view(-1))))
+    min_score_filter = torch.greater(top_peaks, min_score)
+    peak_indices = max_indices.view(-1)[top_indices[min_score_filter]]
+
+    return [(peak, cx, cy) for peak, cx, cy in zip(
+        top_peaks[min_score_filter],
+        torch.remainder(peak_indices, heatmap.shape[1]),
+        torch.div(peak_indices, heatmap.shape[1], rounding_mode="trunc")
+    )]
 
 
 class Detector(torch.nn.Module):

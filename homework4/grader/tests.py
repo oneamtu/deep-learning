@@ -138,6 +138,8 @@ class ExtractPeakGrader(Grader):
         ep = partial(self.module.extract_peak, max_pool_ks=max_pool_ks, min_score=min_score, max_det=100)
         assert len(ep(torch.zeros((10, 10)))) == 0, "No peak expected"
         assert len(ep(torch.arange(100).view(10, 10).float())) == 1, "Single peak expected"
+        import pdb
+        pdb.set_trace()
         assert len(ep(torch.ones((10, 10)))) == 100, "100 peaks expected"
         assert len(ep((torch.arange(100).view(10, 10) == 55).float())) == 1, "Single peak expected"
         assert len(ep((torch.arange(100).view(10, 10) == 55).float() - 1)) == 0, "No peak expected"
