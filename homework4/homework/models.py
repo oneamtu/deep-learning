@@ -1,16 +1,6 @@
 import torch
 import torch.nn.functional as F
 
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
-def peak_verify(heatmap, peak, cx, cy):
-    for x in range(max(0, cx-1), min(cx+2, heatmap.shape[1])):
-        for y in range(max(0, cy-1), min(cy+2, heatmap.shape[0])):
-            # print(f"heat {heatmap[y][x]} > {peak}")
-            if heatmap[y][x] > peak:
-                return False
-    return True
-
 def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
     """
        Your code here.
@@ -21,7 +11,6 @@ def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
        @return: List of peaks [(score, cx, cy), ...], where cx, cy are the position of a peak and score is the
                 heatmap value at the peak. Return no more than max_det peaks per image
     """
-    heatmap.to(device)
     max_peaks = F.max_pool2d(heatmap[None, None], max_pool_ks, padding=max_pool_ks//2, stride=1)
 
     # This is a tricky part -- we have to make sure the max of the coordinates of the peak matches
@@ -41,15 +30,78 @@ def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
         torch.div(peak_indices, heatmap.shape[1], rounding_mode="trunc")
     )]
 
-
-class Detector(torch.nn.Module):
-    def __init__(self):
+class DownBlock(torch.nn.Module):
+    def __init__(self, n_input, n_output, stride=1):
         """
-           Your code here.
-           Setup your detection network
+        2 layers of Conv2d, ReLU, first with stride
         """
         super().__init__()
-        raise NotImplementedError('Detector.__init__')
+        self.block = torch.nn.Sequential(
+            torch.nn.Conv2d(n_input, n_output, kernel_size=3, padding=1, stride=stride, bias=False),
+            torch.nn.BatchNorm2d(n_output),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(n_output, n_output, kernel_size=3, padding=1, stride=1, bias=False),
+            torch.nn.BatchNorm2d(n_output),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(n_output, n_output, kernel_size=3, padding=1, stride=1, bias=False),
+            torch.nn.BatchNorm2d(n_output),
+            torch.nn.ReLU()
+        )
+        self.downsample = None
+        if stride != 1 or n_input != n_output:
+            self.downsample = torch.nn.Sequential(torch.nn.Conv2d(n_input, n_output, 1, stride=stride),
+                                                    torch.nn.BatchNorm2d(n_output))
+
+    def forward(self, x):
+        residual_x = x
+        if self.downsample is not None:
+            residual_x = self.downsample(x)
+        return self.block(x) + residual_x
+
+class UpBlock(torch.nn.Module):
+    def __init__(self, n_input, n_output, stride=1):
+        """
+        2 layers of Conv2d, ReLU, first with stride
+        """
+        super().__init__()
+        self.up_block = torch.nn.Sequential(
+            torch.nn.ConvTranspose2d(n_input, n_output, kernel_size=3, padding=1, stride=stride, output_padding=stride-1, bias=False),
+            torch.nn.BatchNorm2d(n_output),
+            torch.nn.ReLU()
+        )
+        self.concat_block = torch.nn.Sequential(
+            torch.nn.Conv2d(2*n_output, n_output, kernel_size=3, padding=1, bias=False),
+            torch.nn.BatchNorm2d(n_output),
+            torch.nn.ReLU()
+        )
+        self.upsample = None
+        if stride != 1 or n_input != n_output:
+            self.upsample = torch.nn.Sequential(torch.nn.ConvTranspose2d(n_input, n_output, 1, stride=stride, output_padding=stride-1),
+                                                    torch.nn.BatchNorm2d(n_output))
+
+    def forward(self, x, skip_x):
+        residual_x = x
+        if self.upsample is not None:
+            residual_x = self.upsample(x)
+        up_x = self.up_block(x)
+        return self.concat_block(torch.cat((up_x, skip_x), dim=1)) + residual_x
+
+class Detector(torch.nn.Module):
+    def __init__(self, layers = [16, 32, 64, 128], n_input_channels = 3):
+        """
+        Your code here.
+        Setup your detection network
+        """
+        super().__init__()
+        self.first_conv = torch.nn.Conv2d(n_input_channels, layers[0], kernel_size=3, padding=1)
+        self.downs = torch.nn.ModuleList([
+            DownBlock(i, o, stride=2) for i, o in zip(layers[:-1], layers[1:])
+        ])
+        self.ups = torch.nn.ModuleList([
+            UpBlock(i, o, stride=2) for o, i in zip(layers[:-1], layers[1:])
+        ])
+        self.dropout = torch.nn.Dropout()
+        self.classifier = torch.nn.Conv2d(layers[0], 5, kernel_size=1)
 
     def forward(self, x):
         """
@@ -57,7 +109,23 @@ class Detector(torch.nn.Module):
            Implement a forward pass through the network, use forward for training,
            and detect for detection
         """
-        raise NotImplementedError('Detector.forward')
+        max_scale_layers = int(np.log2(min(x.shape[-1], x.shape[-2])))
+        skip_ys = []
+
+        # TODO: stdev vs variance; also dataset may be diff
+        normal_x = F.normalize(x, [0.2801, 0.2499, 0.2446], [0.1922, 0.1739, 0.1801])
+        y = self.first_conv(normal_x)
+
+        for down in self.downs[:max_scale_layers]:
+            skip_ys.append(y)
+            y = down(y)
+        
+        for up in reversed(self.ups[:max_scale_layers]):
+            skip_y = skip_ys.pop()
+            y = up(y, skip_y)
+
+        y = self.dropout(y)
+        return self.classifier(y)
 
     def detect(self, image):
         """
