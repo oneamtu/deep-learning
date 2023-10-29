@@ -3,6 +3,14 @@ import torch.nn.functional as F
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
+def peak_verify(heatmap, peak, cx, cy):
+    for x in range(max(0, cx-1), min(cx+2, heatmap.shape[1])):
+        for y in range(max(0, cy-1), min(cy+2, heatmap.shape[0])):
+            # print(f"heat {heatmap[y][x]} > {peak}")
+            if heatmap[y][x] > peak:
+                return False
+    return True
+
 def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
     """
        Your code here.
@@ -14,13 +22,21 @@ def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
                 heatmap value at the peak. Return no more than max_det peaks per image
     """
     heatmap.to(device)
-    max_peaks, max_indices = F.max_pool2d(heatmap[None, None], max_pool_ks, return_indices=True)
-    top_peaks, top_indices = torch.topk(max_peaks.view(-1), min(max_det, len(max_peaks.view(-1))))
+    max_peaks = F.max_pool2d(heatmap[None, None], max_pool_ks, padding=max_pool_ks//2, stride=1)
+
+    # This is a tricky part -- we have to make sure the max of the coordinates of the peak matches
+    # the value of the peak
+    peak_filter = torch.eq(heatmap.view(-1), max_peaks.view(-1))
+    matching_peaks = max_peaks.view(-1)[peak_filter]
+    
+    top_peaks, top_indices = torch.topk(matching_peaks, min(max_det, len(matching_peaks)))
     min_score_filter = torch.greater(top_peaks, min_score)
-    peak_indices = max_indices.view(-1)[top_indices[min_score_filter]]
+
+    peaks = top_peaks[min_score_filter]
+    peak_indices = torch.arange(len(heatmap.view(-1)))[peak_filter][top_indices[min_score_filter]]
 
     return [(peak, cx, cy) for peak, cx, cy in zip(
-        top_peaks[min_score_filter],
+        peaks,
         torch.remainder(peak_indices, heatmap.shape[1]),
         torch.div(peak_indices, heatmap.shape[1], rounding_mode="trunc")
     )]
