@@ -64,8 +64,10 @@ class UpBlock(torch.nn.Module):
         2 layers of Conv2d, ReLU, first with stride
         """
         super().__init__()
+        # TODO: keep bias
+        # TODO: remove residual
         self.up_block = torch.nn.Sequential(
-            torch.nn.ConvTranspose2d(n_input, n_output, kernel_size=3, padding=1, stride=stride, output_padding=stride-1, bias=False),
+            torch.nn.ConvTranspose2d(n_input, n_output, kernel_size=1, stride=stride, output_padding=stride-1, bias=False),
             torch.nn.BatchNorm2d(n_output),
             torch.nn.ReLU()
         )
@@ -80,11 +82,11 @@ class UpBlock(torch.nn.Module):
                                                     torch.nn.BatchNorm2d(n_output))
 
     def forward(self, x, skip_x):
-        residual_x = x
-        if self.upsample is not None:
-            residual_x = self.upsample(x)
+        # residual_x = x
+        # if self.upsample is not None:
+        #     residual_x = self.upsample(x)
         up_x = self.up_block(x)
-        return self.concat_block(torch.cat((up_x, skip_x), dim=1)) + residual_x
+        return self.concat_block(torch.cat((up_x, skip_x), dim=1)) # + residual_x
 
 class Detector(torch.nn.Module):
     def __init__(self, layers = [16, 32, 64, 128], n_input_channels = 3):
