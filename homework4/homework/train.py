@@ -3,7 +3,7 @@ import numpy as np
 
 import timeit
 
-from .models import Detector, save_model
+from .models import Detector, save_model, load_model
 from .utils import load_detection_data, DetectionSuperTuxDataset
 from . import dense_transforms
 import torch.utils.tensorboard as tb
@@ -53,7 +53,10 @@ def train(args):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     print('device = ', device)
 
-    model = Detector().to(device)
+    if args.test_run:
+        model = load_model().to(device)
+    else:
+        model = Detector().to(device)
 
     train_logger, valid_logger = None, None
     if args.log_dir is not None:
@@ -79,7 +82,7 @@ def train(args):
         valid_data = DetectionSuperTuxDataset('dense_data/valid', min_size=0)
 
     # TODO: tune LR ?
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999), weight_decay=args.weight_decay)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999), weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=10)
 
     max_valid_accuracy = 0
@@ -108,7 +111,7 @@ def train(args):
             if args.loss == "bce":
                 positives = torch.count_nonzero(train_peaks, dim=(2, 3))
                 negatives = torch.tensor([train_peaks.shape[2] * train_peaks.shape[3]]).to(device) - positives
-                pos_weight = (negatives/(positives + 1e4)).unsqueeze(-1).unsqueeze(-1)
+                pos_weight = (negatives/(positives + 1e-4)).unsqueeze(-1).unsqueeze(-1)
 
                 loss = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight).forward(y_hat, train_peaks)
             else:
@@ -117,7 +120,7 @@ def train(args):
             # loss = torch.nn.CrossEntropyLoss(weight=class_weights).forward(y_hat, train_peaks)
 
             global_step = epoch*len(training_data) + i
-            # train_logger.add_scalar('loss', loss, global_step)
+            train_logger.add_scalar('loss', loss, global_step)
 
             optimizer.zero_grad()
             loss.backward()
@@ -127,7 +130,9 @@ def train(args):
             # train_confusion_matrix.add(y_hat.argmax(1), train_peaks)
 
             if i < 5:
-                log(train_logger, train_image[0], train_peaks[0], y_hat[0], global_step)
+                # import pdb
+                # pdb.set_trace()
+                log(train_logger, train_image[0], train_peaks[0], y_hat[0], global_step, args)
 
         # train_accuracy = train_confusion_matrix.global_accuracy.cpu().detach().item()
         train_logger.add_scalar('total_loss', total_loss, global_step)
@@ -157,7 +162,7 @@ def train(args):
 
                     if i < 5:
                         valid_peaks, _valid_sizes = dense_transforms.detections_to_heatmap(gts, valid_image.shape[1:], device=device)
-                        log(valid_logger, valid_image, valid_peaks, model.forward(valid_image).squeeze(), global_step + i)
+                        log(valid_logger, valid_image, valid_peaks, model.forward(valid_image).squeeze(), global_step + i, args)
             
                     for j, gt in enumerate(gts):
                         pr_box[j].add(detections[j], gt)
@@ -201,7 +206,7 @@ def train(args):
                 print(f"Stopping at epoch {epoch}: max accuracy {max_valid_accuracy}")
                 break
 
-def log(logger, img, gt_det, det, global_step):
+def log(logger, img, gt_det, det, global_step, args):
     """
     logger: train_logger/valid_logger
     imgs: image tensor from data loader
@@ -209,7 +214,10 @@ def log(logger, img, gt_det, det, global_step):
     det: predicted object-center heatmaps
     global_step: iteration
     """
-    logger.add_images('image', torch.stack([img, gt_det, torch.sigmoid(det)]), global_step)
+    if args.loss == "bce":
+        logger.add_images('image', torch.stack([img, gt_det, torch.sigmoid(det)]), global_step)
+    else:
+        logger.add_images('image', torch.stack([img, gt_det, torch.nn.functional.softmax(det)]), global_step)
 
 if __name__ == '__main__':
     import argparse
@@ -225,6 +233,7 @@ if __name__ == '__main__':
     parser.add_argument('--test_run', type=bool, default=False)
     parser.add_argument('--loss', default="focal")
     parser.add_argument('--focal_gamma', type=float, default=2.)
+    parser.add_argument('--lr', type=float, default=1e-3)
     # Put custom arguments here
 
     args = parser.parse_args()
