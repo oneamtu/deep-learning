@@ -24,8 +24,8 @@ def train(args):
 
     train_logger, valid_logger = None, None
     if args.log_dir is not None:
-        train_logger = tb.SummaryWriter(path.join(args.log_dir, 'train'), flush_secs=1)
-        valid_logger = tb.SummaryWriter(path.join(args.log_dir, 'valid'), flush_secs=1)
+        train_logger = tb.SummaryWriter(path.join(args.log_dir, 'train'), flush_secs=15)
+        valid_logger = tb.SummaryWriter(path.join(args.log_dir, 'valid'), flush_secs=15)
 
     training_data = load_detection_data('dense_data/train', 
                                         batch_size=args.batch_size,
@@ -56,6 +56,8 @@ def train(args):
         # class_weights = 1. / torch.tensor(DENSE_CLASS_DISTRIBUTION).to(device)
 
         for i, (train_image, train_peaks, _train_sizes) in enumerate(training_data):
+            # if i == 5:
+            #     break
             train_image, train_peaks, _train_sizes = train_image.to(device), train_peaks.to(device), _train_sizes.to(device)
 
             y_hat = model.forward(train_image)
@@ -64,7 +66,7 @@ def train(args):
             # loss = torch.nn.CrossEntropyLoss(weight=class_weights).forward(y_hat, train_peaks)
 
             global_step = epoch*len(training_data) + i
-            train_logger.add_scalar('loss', loss, global_step)
+            # train_logger.add_scalar('loss', loss, global_step)
 
             optimizer.zero_grad()
             loss.backward()
@@ -94,6 +96,8 @@ def train(args):
         pr_iou = [PR(is_close=box_iou) for _ in range(3)]
 
         for i, (valid_image, *gts) in enumerate(valid_data):
+            # if i == 5:
+            #     break
             with torch.no_grad():
                 valid_image = valid_image.to(device)
                 detections = model.detect(valid_image)
