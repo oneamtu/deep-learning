@@ -53,10 +53,8 @@ def train(args):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     print('device = ', device)
 
-    if args.test_run:
-        model = load_model().to(device)
-    else:
-        model = Detector().to(device)
+#     model = load_model().to(device)
+    model = Detector().to(device)
 
     train_logger, valid_logger = None, None
     if args.log_dir is not None:
