@@ -93,6 +93,9 @@ class Detector(torch.nn.Module):
         Setup your detection network
         """
         super().__init__()
+        self.mean = torch.tensor([0.2801, 0.2499, 0.2446])
+        self.std_dev = torch.tensor([0.1922, 0.1739, 0.1801])
+
         self.first_conv = torch.nn.Conv2d(n_input_channels, layers[0], kernel_size=3, padding=1)
         self.downs = torch.nn.ModuleList([
             DownBlock(i, o, stride=2) for i, o in zip(layers[:-1], layers[1:])
@@ -101,7 +104,7 @@ class Detector(torch.nn.Module):
             UpBlock(i, o, stride=2) for o, i in zip(layers[:-1], layers[1:])
         ])
         self.dropout = torch.nn.Dropout()
-        self.classifier = torch.nn.Conv2d(layers[0], 5, kernel_size=1)
+        self.classifier = torch.nn.Conv2d(layers[0], 3, kernel_size=1)
 
     def forward(self, x):
         """
@@ -109,18 +112,17 @@ class Detector(torch.nn.Module):
            Implement a forward pass through the network, use forward for training,
            and detect for detection
         """
-        max_scale_layers = int(np.log2(min(x.shape[-1], x.shape[-2])))
         skip_ys = []
 
         # TODO: stdev vs variance; also dataset may be diff
-        normal_x = F.normalize(x, [0.2801, 0.2499, 0.2446], [0.1922, 0.1739, 0.1801])
+        normal_x = (x - self.mean[None, :, None, None]).to(x.device) / self.std_dev[None, :, None, None].to(x.device)
         y = self.first_conv(normal_x)
 
-        for down in self.downs[:max_scale_layers]:
+        for down in self.downs:
             skip_ys.append(y)
             y = down(y)
         
-        for up in reversed(self.ups[:max_scale_layers]):
+        for up in reversed(self.ups):
             skip_y = skip_ys.pop()
             y = up(y, skip_y)
 
@@ -140,7 +142,8 @@ class Detector(torch.nn.Module):
                  scalar. Otherwise pytorch might keep a computation graph in the background and your program will run
                  out of memory.
         """
-        raise NotImplementedError('Detector.detect')
+        output = self.forward(image)
+        return [[(score, cx, cy, 0, 0) for score, cx, cy in extract_peak(class_heatmap)] for class_heatmap in output]
 
 
 def save_model(model):
