@@ -145,7 +145,7 @@ class Detector(torch.nn.Module):
                  out of memory.
         """
         output = torch.sigmoid(self.forward(image).squeeze())
-        return [[(score, cx, cy, 0, 0) for score, cx, cy in extract_peak(class_heatmap, min_score=0.5)] for class_heatmap in output]
+        return [[(score, cx, cy, 0, 0) for score, cx, cy in extract_peak(class_heatmap, min_score=0.2)] for class_heatmap in output]
 
 
 def save_model(model):
