@@ -115,7 +115,7 @@ class Detector(torch.nn.Module):
         skip_ys = []
 
         # TODO: stdev vs variance; also dataset may be diff
-        normal_x = (x - self.mean[None, :, None, None]).to(x.device) / self.std_dev[None, :, None, None].to(x.device)
+        normal_x = (x - self.mean[None, :, None, None].to(x.device)) / self.std_dev[None, :, None, None].to(x.device)
         y = self.first_conv(normal_x)
 
         for down in self.downs:
