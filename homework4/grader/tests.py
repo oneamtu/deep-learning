@@ -78,7 +78,10 @@ class PR:
             else:
                 false_pos += 1
             prec = true_pos / (true_pos + false_pos)
-            recall = true_pos / self.total_det
+            if self.total_det > 0:
+                recall = true_pos / self.total_det
+            else:
+                recall = 0
             r.append((prec, recall))
         return r
 

@@ -94,15 +94,14 @@ def train(args):
         pr_dist = [PR(is_close=point_close) for _ in range(3)]
         pr_iou = [PR(is_close=box_iou) for _ in range(3)]
 
-        for valid_image, gts, _valid_sizes in valid_data:
+        for valid_image, *gts in valid_data:
             with torch.no_grad():
-                valid_image, valid_peaks = valid_image.to(device), valid_peaks.to(device)
+                valid_image = valid_image.to(device)
                 detections = model.detect(valid_image)
 
-                # valid_confusion_matrix.add(y_hat.argmax(1), valid_peaks)
-
                 if not logged_valid_image:
-                    log(valid_logger, valid_image, valid_peaks, model.forward(valid_image), global_step)
+                    # valid_peaks, _valid_sizes = dense_transforms.detections_to_heatmap(gts, valid_image.shape[1:])
+                    # log(valid_logger, valid_image, valid_peaks, model.forward(valid_image), global_step)
                     logged_valid_image = True
         
                 for i, gt in enumerate(gts):
@@ -113,25 +112,25 @@ def train(args):
         average_box_precision = np.average([pr.average_prec for pr in pr_box])
         valid_logger.add_scalars('pr_box', 
                                  { 
-                                    0: pr_box[0].average_prec, 
-                                    1: pr_box[1].average_prec, 
-                                    2: pr_box[2].average_prec, 
+                                    "karts": pr_box[0].average_prec, 
+                                    "bombs": pr_box[1].average_prec, 
+                                    "pickup": pr_box[2].average_prec, 
                                     "average": average_box_precision
                                 }, 
                                 global_step)
         average_dist_precision = np.average([pr.average_prec for pr in pr_dist])
         valid_logger.add_scalars('pr_dist', 
                                  { 
-                                    0: pr_dist[0].average_prec, 
-                                    1: pr_dist[1].average_prec, 
-                                    2: pr_dist[2].average_prec, 
+                                    "karts": pr_dist[0].average_prec, 
+                                    "bombs": pr_dist[1].average_prec, 
+                                    "pickup": pr_dist[2].average_prec, 
                                     "average": average_dist_precision
                                 }, 
                                 global_step)
 
         train_logger.add_scalar('lr', optimizer.param_groups[0]['lr'], global_step)
         valid_accuracy = average_box_precision + average_dist_precision
-        scheduler.step()
+        scheduler.step(valid_accuracy)
 
         print(f"Epoch {epoch+1}/{args.epochs} | Train Loss: {total_loss} | LR: {optimizer.param_groups[0]['lr']} " +
               f"| Valid Accuracy: {valid_accuracy}")
