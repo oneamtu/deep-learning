@@ -73,8 +73,8 @@ def train(args):
             total_loss += loss.cpu().detach().item()
             # train_confusion_matrix.add(y_hat.argmax(1), train_peaks)
 
-            if i == 0:
-                log(train_logger, train_image, train_peaks, y_hat, global_step)
+            if i < 5:
+                log(train_logger, train_image[0], train_peaks[0], y_hat[0], global_step)
 
         # train_accuracy = train_confusion_matrix.global_accuracy.cpu().detach().item()
         train_logger.add_scalar('total_loss', total_loss, global_step)
@@ -88,21 +88,19 @@ def train(args):
         print(f"CUDA Memory used after train: {torch.cuda.memory_allocated()}")
 
         # valid_confusion_matrix = ConfusionMatrix()
-        logged_valid_image = False
 
         pr_box = [PR() for _ in range(3)]
         pr_dist = [PR(is_close=point_close) for _ in range(3)]
         pr_iou = [PR(is_close=box_iou) for _ in range(3)]
 
-        for valid_image, *gts in valid_data:
+        for i, (valid_image, *gts) in enumerate(valid_data):
             with torch.no_grad():
                 valid_image = valid_image.to(device)
                 detections = model.detect(valid_image)
 
-                if not logged_valid_image:
-                    # valid_peaks, _valid_sizes = dense_transforms.detections_to_heatmap(gts, valid_image.shape[1:])
-                    # log(valid_logger, valid_image, valid_peaks, model.forward(valid_image), global_step)
-                    logged_valid_image = True
+                if i < 5:
+                    valid_peaks, _valid_sizes = dense_transforms.detections_to_heatmap(gts, valid_image.shape[1:])
+                    log(valid_logger, valid_image, valid_peaks, model.forward(valid_image).squeeze(), global_step)
         
                 for i, gt in enumerate(gts):
                     pr_box[i].add(detections[i], gt)
@@ -146,7 +144,7 @@ def train(args):
             print(f"Stopping at epoch {epoch}: max accuracy {max_valid_accuracy}")
             break
 
-def log(logger, imgs, gt_det, det, global_step):
+def log(logger, img, gt_det, det, global_step):
     """
     logger: train_logger/valid_logger
     imgs: image tensor from data loader
@@ -154,9 +152,9 @@ def log(logger, imgs, gt_det, det, global_step):
     det: predicted object-center heatmaps
     global_step: iteration
     """
-    logger.add_images('image', imgs[:16], global_step)
-    logger.add_images('label', gt_det[:16], global_step)
-    logger.add_images('pred', torch.sigmoid(det[:16]), global_step)
+    logger.add_image('image', img, global_step)
+    logger.add_image('image', gt_det, global_step)
+    logger.add_image('image', torch.sigmoid(det), global_step)
 
 if __name__ == '__main__':
     import argparse
