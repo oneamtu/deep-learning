@@ -149,7 +149,7 @@ def train(args):
         pr_dist = [PR(is_close=point_close) for _ in range(3)]
         pr_iou = [PR(is_close=box_iou) for _ in range(3)]
 
-        if epoch % 5 == 4 or args.test_run:
+        if epoch % 30 == 29 or args.test_run:
             for i, (valid_image, *gts) in enumerate(valid_data):
                 if args.test_run and i == 5:
                     break
