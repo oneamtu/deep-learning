@@ -10,10 +10,10 @@ import torch.utils.tensorboard as tb
 
 from grader.tests import PR, point_close, box_iou
 
-# implement training
-# implement BCE
-# implement test grader check for accuracy
 # implement pos_weight
+# fewer accuracy
+# profile
+# A100
 # focal loss?
 
 def train(args):
@@ -44,6 +44,7 @@ def train(args):
                                         ]))
     valid_data = DetectionSuperTuxDataset('dense_data/valid', min_size=0)
 
+    # TODO: tune LR ?
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999), weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=10)
 
@@ -70,7 +71,11 @@ def train(args):
 
             y_hat = model.forward(train_image)
             # TODO: adjust weights?
-            loss = torch.nn.BCEWithLogitsLoss().forward(y_hat, train_peaks)
+            positives = torch.count_nonzero(train_peaks, dim=(2, 3))
+            negatives = torch.tensor([train_peaks.shape[2] * train_peaks.shape[3]]) - positives
+            pos_weight = (negatives/(positives + 1e4)).unsqueeze(-1).unsqueeze(-1)
+
+            loss = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight).forward(y_hat, train_peaks)
             # loss = torch.nn.CrossEntropyLoss(weight=class_weights).forward(y_hat, train_peaks)
 
             global_step = epoch*len(training_data) + i
@@ -176,7 +181,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--patience', type=int, default=10)
-    parser.add_argument('--weight_decay', type=float, default=1e4)
+    parser.add_argument('--weight_decay', type=float, default=1e-4)
     parser.add_argument('--intense_augment', type=bool, default=True)
     parser.add_argument('--test_run', type=bool, default=False)
     # Put custom arguments here
