@@ -108,59 +108,60 @@ def train(args):
         pr_dist = [PR(is_close=point_close) for _ in range(3)]
         pr_iou = [PR(is_close=box_iou) for _ in range(3)]
 
-        for i, (valid_image, *gts) in enumerate(valid_data):
-            if args.test_run and i == 5:
+        if epoch % 5 == 4:
+            for i, (valid_image, *gts) in enumerate(valid_data):
+                if args.test_run and i == 5:
+                    break
+
+                with torch.no_grad():
+                    valid_image = valid_image.to(device)
+                    detections = model.detect(valid_image)
+
+                    if i < 5:
+                        valid_peaks, _valid_sizes = dense_transforms.detections_to_heatmap(gts, valid_image.shape[1:], device=device)
+                        log(valid_logger, valid_image, valid_peaks, model.forward(valid_image).squeeze(), global_step)
+            
+                    for j, gt in enumerate(gts):
+                        pr_box[j].add(detections[j], gt)
+                        pr_dist[j].add(detections[j], gt)
+                        pr_iou[j].add(detections[j], gt)
+
+            average_box_precision = np.average([pr.average_prec for pr in pr_box])
+            valid_logger.add_scalars('pr_box', 
+                                    { 
+                                        "karts": pr_box[0].average_prec, 
+                                        "bombs": pr_box[1].average_prec, 
+                                        "pickup": pr_box[2].average_prec, 
+                                        "average": average_box_precision
+                                    }, 
+                                    global_step)
+            average_dist_precision = np.average([pr.average_prec for pr in pr_dist])
+            valid_logger.add_scalars('pr_dist', 
+                                    { 
+                                        "karts": pr_dist[0].average_prec, 
+                                        "bombs": pr_dist[1].average_prec, 
+                                        "pickup": pr_dist[2].average_prec, 
+                                        "average": average_dist_precision
+                                    }, 
+                                    global_step)
+
+            train_logger.add_scalar('lr', optimizer.param_groups[0]['lr'], global_step)
+            valid_accuracy = average_box_precision + average_dist_precision
+            scheduler.step(valid_accuracy)
+
+            print(f"Epoch {epoch+1}/{args.epochs} | Train Loss: {total_loss} | LR: {optimizer.param_groups[0]['lr']} " +
+                f"| Valid Accuracy: {valid_accuracy} | Time {(timeit.default_timer() - start_time):.2f}s")
+
+            if max_valid_accuracy < valid_accuracy:
+                max_valid_accuracy = valid_accuracy
+                save_model(model)
+                worse_epochs = 0
+            else:
+                worse_epochs += 1
+            
+            if worse_epochs >= args.patience:
+                print(f"Stopping at epoch {epoch}: max accuracy {max_valid_accuracy}")
                 break
-
-            with torch.no_grad():
-                valid_image = valid_image.to(device)
-                detections = model.detect(valid_image)
-
-                if i < 5:
-                    valid_peaks, _valid_sizes = dense_transforms.detections_to_heatmap(gts, valid_image.shape[1:], device=device)
-                    log(valid_logger, valid_image, valid_peaks, model.forward(valid_image).squeeze(), global_step)
-        
-                for j, gt in enumerate(gts):
-                    pr_box[j].add(detections[j], gt)
-                    pr_dist[j].add(detections[j], gt)
-                    pr_iou[j].add(detections[j], gt)
-
-        average_box_precision = np.average([pr.average_prec for pr in pr_box])
-        valid_logger.add_scalars('pr_box', 
-                                 { 
-                                    "karts": pr_box[0].average_prec, 
-                                    "bombs": pr_box[1].average_prec, 
-                                    "pickup": pr_box[2].average_prec, 
-                                    "average": average_box_precision
-                                }, 
-                                global_step)
-        average_dist_precision = np.average([pr.average_prec for pr in pr_dist])
-        valid_logger.add_scalars('pr_dist', 
-                                 { 
-                                    "karts": pr_dist[0].average_prec, 
-                                    "bombs": pr_dist[1].average_prec, 
-                                    "pickup": pr_dist[2].average_prec, 
-                                    "average": average_dist_precision
-                                }, 
-                                global_step)
-
-        train_logger.add_scalar('lr', optimizer.param_groups[0]['lr'], global_step)
-        valid_accuracy = average_box_precision + average_dist_precision
-        scheduler.step(valid_accuracy)
-
-        print(f"Epoch {epoch+1}/{args.epochs} | Train Loss: {total_loss} | LR: {optimizer.param_groups[0]['lr']} " +
-              f"| Valid Accuracy: {valid_accuracy} | Time {(timeit.default_timer() - start_time):.2f}s")
-
-        if max_valid_accuracy < valid_accuracy:
-            max_valid_accuracy = valid_accuracy
-            save_model(model)
-            worse_epochs = 0
-        else:
-            worse_epochs += 1
-        
-        if worse_epochs >= args.patience:
-            print(f"Stopping at epoch {epoch}: max accuracy {max_valid_accuracy}")
-            break
 
 def log(logger, img, gt_det, det, global_step):
     """
