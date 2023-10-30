@@ -89,6 +89,8 @@ class PR:
     def average_prec(self, n_samples=11):
         import numpy as np
         pr = np.array(self.curve, np.float32)
+        if pr.size == 0:
+            return 0
         return np.mean([np.max(pr[pr[:, 1] >= t, 0], initial=0) for t in np.linspace(0, 1, n_samples)])
 
 

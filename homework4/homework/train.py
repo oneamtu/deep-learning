@@ -106,10 +106,10 @@ def train(args):
                     valid_peaks, _valid_sizes = dense_transforms.detections_to_heatmap(gts, valid_image.shape[1:])
                     log(valid_logger, valid_image, valid_peaks, model.forward(valid_image).squeeze(), global_step)
         
-                for i, gt in enumerate(gts):
-                    pr_box[i].add(detections[i], gt)
-                    pr_dist[i].add(detections[i], gt)
-                    pr_iou[i].add(detections[i], gt)
+                for j, gt in enumerate(gts):
+                    pr_box[j].add(detections[j], gt)
+                    pr_dist[j].add(detections[j], gt)
+                    pr_iou[j].add(detections[j], gt)
 
         average_box_precision = np.average([pr.average_prec for pr in pr_box])
         valid_logger.add_scalars('pr_box', 
