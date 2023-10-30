@@ -22,7 +22,7 @@ def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
     min_score_filter = torch.greater(top_peaks, min_score)
 
     peaks = top_peaks[min_score_filter]
-    peak_indices = torch.arange(len(heatmap.view(-1)))[peak_filter][top_indices[min_score_filter]]
+    peak_indices = torch.arange(len(heatmap.view(-1))).to(heatmap.device)[peak_filter][top_indices[min_score_filter]]
 
     return [(peak, cx, cy) for peak, cx, cy in zip(
         peaks,
