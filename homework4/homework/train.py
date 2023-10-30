@@ -1,6 +1,8 @@
 import torch
 import numpy as np
 
+import timeit
+
 from .models import Detector, save_model
 from .utils import load_detection_data, DetectionSuperTuxDataset
 from . import dense_transforms
@@ -27,23 +29,29 @@ def train(args):
         train_logger = tb.SummaryWriter(path.join(args.log_dir, 'train'), flush_secs=15)
         valid_logger = tb.SummaryWriter(path.join(args.log_dir, 'valid'), flush_secs=15)
 
+    if args.intense_augment:
+        jitter = dense_transforms.ColorJitter(0.9, 0.9, 0.9, 0.1)
+    else:
+        jitter = dense_transforms.ColorJitter(0.3, 0.3, 0.3, 0.1)
+
     training_data = load_detection_data('dense_data/train', 
                                         batch_size=args.batch_size,
                                         transform=dense_transforms.Compose([
                                             dense_transforms.RandomHorizontalFlip(),
-                                            dense_transforms.ColorJitter(0.9, 0.9, 0.9, 0.1),
+                                            jitter,
                                             dense_transforms.ToTensor(),
                                             dense_transforms.ToHeatmap()
                                         ]))
     valid_data = DetectionSuperTuxDataset('dense_data/valid', min_size=0)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999), weight_decay=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999), weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=10)
 
     max_valid_accuracy = 0
     worse_epochs = 0
 
     for epoch in range(int(args.epochs)):
+        start_time = timeit.default_timer()
         # enable train mode
         model.train()
 
@@ -56,12 +64,12 @@ def train(args):
         # class_weights = 1. / torch.tensor(DENSE_CLASS_DISTRIBUTION).to(device)
 
         for i, (train_image, train_peaks, _train_sizes) in enumerate(training_data):
-            # if i == 5:
-            #     break
+            if args.test_run and i == 5:
+                break
             train_image, train_peaks, _train_sizes = train_image.to(device), train_peaks.to(device), _train_sizes.to(device)
 
             y_hat = model.forward(train_image)
-            # NOTE: adjust weights?
+            # TODO: adjust weights?
             loss = torch.nn.BCEWithLogitsLoss().forward(y_hat, train_peaks)
             # loss = torch.nn.CrossEntropyLoss(weight=class_weights).forward(y_hat, train_peaks)
 
@@ -87,7 +95,7 @@ def train(args):
         # enable eval mode
         model.eval()
 
-        print(f"CUDA Memory used after train: {torch.cuda.memory_allocated()}")
+        print(f"CUDA Memory used after train: {torch.cuda.memory_allocated()} | Time {(timeit.default_timer() - start_time):.2f}s")
 
         # valid_confusion_matrix = ConfusionMatrix()
 
@@ -96,14 +104,15 @@ def train(args):
         pr_iou = [PR(is_close=box_iou) for _ in range(3)]
 
         for i, (valid_image, *gts) in enumerate(valid_data):
-            # if i == 5:
-            #     break
+            if args.test_run and i == 5:
+                break
+
             with torch.no_grad():
                 valid_image = valid_image.to(device)
                 detections = model.detect(valid_image)
 
                 if i < 5:
-                    valid_peaks, _valid_sizes = dense_transforms.detections_to_heatmap(gts, valid_image.shape[1:])
+                    valid_peaks, _valid_sizes = dense_transforms.detections_to_heatmap(gts, valid_image.shape[1:], device=device)
                     log(valid_logger, valid_image, valid_peaks, model.forward(valid_image).squeeze(), global_step)
         
                 for j, gt in enumerate(gts):
@@ -135,7 +144,7 @@ def train(args):
         scheduler.step(valid_accuracy)
 
         print(f"Epoch {epoch+1}/{args.epochs} | Train Loss: {total_loss} | LR: {optimizer.param_groups[0]['lr']} " +
-              f"| Valid Accuracy: {valid_accuracy}")
+              f"| Valid Accuracy: {valid_accuracy} | Time {(timeit.default_timer() - start_time):.2f}s")
 
         if max_valid_accuracy < valid_accuracy:
             max_valid_accuracy = valid_accuracy
@@ -167,6 +176,9 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--patience', type=int, default=10)
+    parser.add_argument('--weight_decay', type=float, default=1e4)
+    parser.add_argument('--intense_augment', type=bool, default=True)
+    parser.add_argument('--test_run', type=bool, default=False)
     # Put custom arguments here
 
     args = parser.parse_args()
