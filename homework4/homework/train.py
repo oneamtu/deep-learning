@@ -70,9 +70,9 @@ def train(args):
             train_image, train_peaks, _train_sizes = train_image.to(device), train_peaks.to(device), _train_sizes.to(device)
 
             y_hat = model.forward(train_image)
-            # TODO: adjust weights?
+
             positives = torch.count_nonzero(train_peaks, dim=(2, 3))
-            negatives = torch.tensor([train_peaks.shape[2] * train_peaks.shape[3]]) - positives
+            negatives = torch.tensor([train_peaks.shape[2] * train_peaks.shape[3]]).to(device) - positives
             pos_weight = (negatives/(positives + 1e4)).unsqueeze(-1).unsqueeze(-1)
 
             loss = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight).forward(y_hat, train_peaks)
