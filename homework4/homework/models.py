@@ -82,14 +82,14 @@ class UpBlock(torch.nn.Module):
                                                     torch.nn.BatchNorm2d(n_output))
 
     def forward(self, x, skip_x):
-        # residual_x = x
-        # if self.upsample is not None:
-        #     residual_x = self.upsample(x)
+        residual_x = x
+        if self.upsample is not None:
+            residual_x = self.upsample(x)
         up_x = self.up_block(x)
-        return self.concat_block(torch.cat((up_x, skip_x), dim=1)) # + residual_x
+        return self.concat_block(torch.cat((up_x, skip_x), dim=1)) + residual_x
 
 class Detector(torch.nn.Module):
-    def __init__(self, layers = [16, 32, 64, 128], n_input_channels = 3):
+    def __init__(self, layers = [16, 32, 64, 128, 256], n_input_channels = 3):
         """
         Your code here.
         Setup your detection network
@@ -145,7 +145,7 @@ class Detector(torch.nn.Module):
                  out of memory.
         """
         output = torch.sigmoid(self.forward(image).squeeze())
-        return [[(score, cx, cy, 0, 0) for score, cx, cy in extract_peak(class_heatmap, min_score=0.2)] for class_heatmap in output]
+        return [[(score, cx, cy, 0, 0) for score, cx, cy in extract_peak(class_heatmap, min_score=0.02)] for class_heatmap in output]
 
 
 def save_model(model):
