@@ -11,10 +11,41 @@ import torch.utils.tensorboard as tb
 from grader.tests import PR, point_close, box_iou
 
 # implement pos_weight
-# fewer accuracy
+# pos_weight inf issue?
 # profile
+# foca loss?
 # A100
-# focal loss?
+
+# https://github.com/clcarwin/focal_loss_pytorch/blob/e11e75bad957aecf641db6998a1016204722c1bb/focalloss.py#L6
+# https://arxiv.org/pdf/1708.02002v2.pdf
+# MIT license
+
+from torch.autograd import Variable
+
+class FocalLoss(torch.nn.Module):
+    def __init__(self, gamma=0, alpha=None, size_average=True):
+        super(FocalLoss, self).__init__()
+        self.gamma = gamma
+        self.alpha = alpha
+        if isinstance(alpha,(float,int)): self.alpha = torch.Tensor([alpha,1-alpha])
+        if isinstance(alpha,list): self.alpha = torch.Tensor(alpha)
+        self.size_average = size_average
+
+    def forward(self, input, target):
+        logpt = torch.nn.functional.log_softmax(input)
+        logpt = logpt + target
+        logpt = logpt.view(-1)
+        pt = Variable(logpt.data.exp())
+
+        if self.alpha is not None:
+            if self.alpha.type()!=input.data.type():
+                self.alpha = self.alpha.type_as(input.data)
+            at = self.alpha.gather(0,target.data.view(-1))
+            logpt = logpt * Variable(at)
+
+        loss = -1 * (1-pt)**self.gamma * logpt
+        if self.size_average: return loss.mean()
+        else: return loss.sum()
 
 def train(args):
     from os import path
@@ -42,7 +73,10 @@ def train(args):
                                             dense_transforms.ToTensor(),
                                             dense_transforms.ToHeatmap()
                                         ]))
-    valid_data = DetectionSuperTuxDataset('dense_data/valid', min_size=0)
+    if args.test_run:
+        valid_data = DetectionSuperTuxDataset('dense_data/train', min_size=0)
+    else:
+        valid_data = DetectionSuperTuxDataset('dense_data/valid', min_size=0)
 
     # TODO: tune LR ?
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, betas=(0.9, 0.999), weight_decay=args.weight_decay)
@@ -71,11 +105,15 @@ def train(args):
 
             y_hat = model.forward(train_image)
 
-            positives = torch.count_nonzero(train_peaks, dim=(2, 3))
-            negatives = torch.tensor([train_peaks.shape[2] * train_peaks.shape[3]]).to(device) - positives
-            pos_weight = (negatives/(positives + 1e4)).unsqueeze(-1).unsqueeze(-1)
+            if args.loss == "bce":
+                positives = torch.count_nonzero(train_peaks, dim=(2, 3))
+                negatives = torch.tensor([train_peaks.shape[2] * train_peaks.shape[3]]).to(device) - positives
+                pos_weight = (negatives/(positives + 1e4)).unsqueeze(-1).unsqueeze(-1)
 
-            loss = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight).forward(y_hat, train_peaks)
+                loss = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight).forward(y_hat, train_peaks)
+            else:
+                loss = FocalLoss(gamma=args.focal_gamma)(y_hat, train_peaks)
+
             # loss = torch.nn.CrossEntropyLoss(weight=class_weights).forward(y_hat, train_peaks)
 
             global_step = epoch*len(training_data) + i
@@ -108,7 +146,7 @@ def train(args):
         pr_dist = [PR(is_close=point_close) for _ in range(3)]
         pr_iou = [PR(is_close=box_iou) for _ in range(3)]
 
-        if epoch % 5 == 4:
+        if epoch % 5 == 4 or args.test_run:
             for i, (valid_image, *gts) in enumerate(valid_data):
                 if args.test_run and i == 5:
                     break
@@ -182,9 +220,11 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--epochs', type=int, default=100)
     parser.add_argument('--patience', type=int, default=10)
-    parser.add_argument('--weight_decay', type=float, default=1e-4)
+    parser.add_argument('--weight_decay', type=float, default=0.)
     parser.add_argument('--intense_augment', type=bool, default=True)
     parser.add_argument('--test_run', type=bool, default=False)
+    parser.add_argument('--loss', default="focal")
+    parser.add_argument('--focal_gamma', type=float, default=2.)
     # Put custom arguments here
 
     args = parser.parse_args()
