@@ -119,7 +119,7 @@ def train(args):
 
                     if i < 5:
                         valid_peaks, _valid_sizes = dense_transforms.detections_to_heatmap(gts, valid_image.shape[1:], device=device)
-                        log(valid_logger, valid_image, valid_peaks, model.forward(valid_image).squeeze(), global_step)
+                        log(valid_logger, valid_image, valid_peaks, model.forward(valid_image).squeeze(), global_step + i)
             
                     for j, gt in enumerate(gts):
                         pr_box[j].add(detections[j], gt)
