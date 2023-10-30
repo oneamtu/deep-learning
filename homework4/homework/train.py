@@ -156,7 +156,7 @@ def log(logger, img, gt_det, det, global_step):
     det: predicted object-center heatmaps
     global_step: iteration
     """
-    logger.add_images('image', [img, gt_det, torch.sigmoid(det)], global_step)
+    logger.add_images('image', torch.tensor([img, gt_det, torch.sigmoid(det)]), global_step)
 
 if __name__ == '__main__':
     import argparse
