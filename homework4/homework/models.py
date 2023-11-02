@@ -144,8 +144,14 @@ class Detector(torch.nn.Module):
                  scalar. Otherwise pytorch might keep a computation graph in the background and your program will run
                  out of memory.
         """
-        output = torch.sigmoid(self.forward(image).squeeze())
-        return [[(score, cx, cy, 0, 0) for score, cx, cy in extract_peak(class_heatmap, min_score=0.02)] for class_heatmap in output]
+        return self.detections_from_heatmap(torch.sigmoid(self.forward(image).squeeze()))
+    
+    def detections_from_heatmap(self, class_heatmaps):
+        return [
+            torch.stack([
+                torch.tensor([score, cx, cy, 0, 0], dtype=float) for score, cx, cy in extract_peak(class_heatmap, min_score=0.02)
+            ]) for class_heatmap in class_heatmaps
+            ]
 
 
 def save_model(model):

@@ -49,7 +49,7 @@ class FocalLoss(torch.nn.Module):
         if self.size_average: return loss.mean()
         else: return loss.sum()
 
-def train(args):
+def train(args, profiler=None):
     from os import path
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
@@ -81,9 +81,8 @@ def train(args):
     else:
         valid_data = DetectionSuperTuxDataset('dense_data/valid', min_size=0)
 
-    # TODO: tune LR ?
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999), weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=10)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)
 
     max_valid_accuracy = 0
     worse_epochs = 0
@@ -101,12 +100,12 @@ def train(args):
         # train_confusion_matrix = ConfusionMatrix()
         # class_weights = 1. / torch.tensor(DENSE_CLASS_DISTRIBUTION).to(device)
 
-        for i, (train_image, train_peaks, _train_sizes) in enumerate(training_data):
+        for i, (train_images, train_peaks, _train_sizes) in enumerate(training_data):
             if args.test_run and i == 5:
                 break
-            train_image, train_peaks, _train_sizes = train_image.to(device), train_peaks.to(device), _train_sizes.to(device)
+            train_images, train_peaks, _train_sizes = train_images.to(device), train_peaks.to(device), _train_sizes.to(device)
 
-            y_hat = model.forward(train_image)
+            y_hat = model.forward(train_images)
 
             if args.loss == "bce":
                 positives = torch.sum(train_peaks, dim=(2, 3))
@@ -132,7 +131,7 @@ def train(args):
             if i < 5:
                 # import pdb
                 # pdb.set_trace()
-                log(train_logger, train_image[0], train_peaks[0], y_hat[0], global_step, args)
+                log(train_logger, train_images[0], train_peaks[0], y_hat[0], global_step)
 
         # train_accuracy = train_confusion_matrix.global_accuracy.cpu().detach().item()
         train_logger.add_scalar('total_loss', total_loss, global_step)
@@ -151,18 +150,22 @@ def train(args):
         pr_dist = [PR(is_close=point_close) for _ in range(3)]
         pr_iou = [PR(is_close=box_iou) for _ in range(3)]
 
-        if True: # args.test_run:
+        if i % 5 == 4 or args.test_run:
             for i, (valid_image, *gts) in enumerate(valid_data):
                 if args.test_run and i == 5:
                     break
 
                 with torch.no_grad():
                     valid_image = valid_image.to(device)
-                    detections = model.detect(valid_image)
+                    valid_heatmaps = model(valid_image)
+                    detections = model.detections_from_heatmap(valid_heatmaps.squeeze())
 
                     if i < 5:
+                        # import pdb
+                        # pdb.set_trace()
+                        valid_heatmap = valid_heatmaps[0]
                         valid_peaks, _valid_sizes = dense_transforms.detections_to_heatmap(gts, valid_image.shape[1:], device=device)
-                        log(valid_logger, valid_image, valid_peaks, model.forward(valid_image).squeeze(), global_step + i, args)
+                        log(valid_logger, valid_image.squeeze(), valid_peaks, valid_heatmap, global_step + i)
             
                     for j, gt in enumerate(gts):
                         pr_box[j].add(detections[j], gt)
@@ -206,7 +209,7 @@ def train(args):
                 print(f"Stopping at epoch {epoch}: max accuracy {max_valid_accuracy}")
                 break
 
-def log(logger, img, gt_det, det, global_step, args):
+def log(logger, img, gt_det, det, global_step):
     """
     logger: train_logger/valid_logger
     imgs: image tensor from data loader
@@ -214,10 +217,8 @@ def log(logger, img, gt_det, det, global_step, args):
     det: predicted object-center heatmaps
     global_step: iteration
     """
-    if args.loss == "bce":
-        logger.add_images('image', torch.stack([img, gt_det, torch.sigmoid(det)]), global_step)
-    else:
-        logger.add_images('image', torch.stack([img, gt_det, torch.nn.functional.softmax(det)]), global_step)
+    images = [img, gt_det, torch.sigmoid(det)]
+    logger.add_images('image', torch.stack(images), global_step)
 
 if __name__ == '__main__':
     import argparse
@@ -234,14 +235,20 @@ if __name__ == '__main__':
     parser.add_argument('--loss', default="focal")
     parser.add_argument('--focal_gamma', type=float, default=2.)
     parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--profile', type=bool, default=False)
     # Put custom arguments here
 
     args = parser.parse_args()
-    with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA]) as prof:
-        train(args)
+
+    if args.profile:
+        with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], with_stack=True) as prof:
+            train(args, prof)
+
+            print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=50))
+            print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=50))
+            print(prof.key_averages(group_by_stack_n=5).table(sort_by="self_cuda_time_total", row_limit=5))
+            prof.export_stacks("cuda_profiler_stacks.txt", "self_cuda_time_total")
+            prof.export_stacks("cpu_profiler_stacks.txt", "self_cpu_time_total")
+    else:
+        train(args, None)
     
-    print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=50))
-    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=50))
-    print(prof.key_averages(group_by_stack_n=5).table(sort_by="self_cuda_time_total", row_limit=5))
-    prof.export_stacks("cuda_profiler_stacks.txt", "self_cuda_time_total")
-    prof.export_stacks("cpu_profiler_stacks.txt", "self_cpu_time_total")
