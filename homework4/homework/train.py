@@ -247,7 +247,7 @@ def log(logger, img, gt_det, det, gt_sizes, sizes, global_step):
     det: predicted object-center heatmaps
     global_step: iteration
     """
-    zeros = torch.zeros((1, *img.shape[1:]))
+    zeros = torch.zeros((1, *img.shape[1:]), device=img.device)
     images = [
         img,
         gt_det,
