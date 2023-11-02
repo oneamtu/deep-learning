@@ -12,11 +12,10 @@ from grader.tests import PR, point_close, box_iou
 
 from torch.profiler import profile, record_function, ProfilerActivity
 
-# implement pos_weight
-# pos_weight inf issue?
-# profile
 # foca loss?
 # A100
+# update # of channels
+# update detections
 
 # https://github.com/clcarwin/focal_loss_pytorch/blob/e11e75bad957aecf641db6998a1016204722c1bb/focalloss.py#L6
 # https://arxiv.org/pdf/1708.02002v2.pdf
@@ -87,7 +86,7 @@ def train(args, profiler=None):
         valid_data = DetectionSuperTuxDataset("dense_data/valid", min_size=0)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.999), weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "max", patience=5)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, "max", patience=3)
 
     max_valid_accuracy = 0
     worse_epochs = 0
@@ -105,27 +104,32 @@ def train(args, profiler=None):
         # train_confusion_matrix = ConfusionMatrix()
         # class_weights = 1. / torch.tensor(DENSE_CLASS_DISTRIBUTION).to(device)
 
-        for i, (train_images, train_peaks, _train_sizes) in enumerate(training_data):
+        for i, (train_images, train_peaks, train_sizes) in enumerate(training_data):
             if args.test_run and i == 5:
                 break
-            train_images, train_peaks, _train_sizes = (
+            train_images, train_peaks, train_sizes = (
                 train_images.to(device),
                 train_peaks.to(device),
-                _train_sizes.to(device),
+                train_sizes.to(device),
             )
 
             y_hat = model.forward(train_images)
+            predicted_peaks, predicted_sizes = y_hat[:, :3], y_hat[:, 3:]
 
             if args.loss == "bce":
                 positives = torch.sum(train_peaks, dim=(2, 3))
                 negatives = torch.tensor([train_peaks.shape[2] * train_peaks.shape[3]]).to(device) - positives
                 pos_weight = (negatives / (positives + 1e-4)).unsqueeze(-1).unsqueeze(-1)
 
-                loss = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight).forward(y_hat, train_peaks)
+                peak_loss = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight).forward(predicted_peaks, train_peaks)
             else:
-                loss = FocalLoss(gamma=args.focal_gamma)(y_hat, train_peaks)
+                peak_loss = FocalLoss(gamma=args.focal_gamma)(predicted_peaks, train_peaks)
 
-            # loss = torch.nn.CrossEntropyLoss(weight=class_weights).forward(y_hat, train_peaks)
+            peak_mask = torch.sum(predicted_peaks, dim=1, keepdim=True) > args.peak_threshold
+            predicted_sizes = predicted_sizes * torch.cat((peak_mask, peak_mask), dim=1).float()
+            size_loss = torch.nn.L1Loss()(predicted_sizes, train_sizes)
+
+            loss = peak_loss * args.peak_weight + size_loss * (1 - args.peak_weight)
 
             global_step = epoch * len(training_data) + i
             train_logger.add_scalar("loss", loss, global_step)
@@ -135,18 +139,19 @@ def train(args, profiler=None):
             optimizer.step()
 
             total_loss += loss.cpu().detach().item()
-            # train_confusion_matrix.add(y_hat.argmax(1), train_peaks)
 
             if i < 5:
-                # import pdb
-                # pdb.set_trace()
-                log(train_logger, train_images[0], train_peaks[0], y_hat[0], global_step)
+                log(
+                    train_logger,
+                    train_images[0],
+                    train_peaks[0],
+                    predicted_peaks[0],
+                    train_sizes[0],
+                    predicted_sizes[0],
+                    global_step,
+                )
 
-        # train_accuracy = train_confusion_matrix.global_accuracy.cpu().detach().item()
         train_logger.add_scalar("total_loss", total_loss, global_step)
-        # train_logger.add_scalar('accuracy', train_accuracy, global_step)
-        # train_logger.add_scalar('avg_accuracy', train_confusion_matrix.average_accuracy, global_step)
-        # train_logger.add_scalar('iou', train_confusion_matrix.iou, global_step)
 
         # enable eval mode
         model.eval()
@@ -161,6 +166,12 @@ def train(args, profiler=None):
         pr_dist = [PR(is_close=point_close) for _ in range(3)]
         pr_iou = [PR(is_close=box_iou) for _ in range(3)]
 
+        prs = {
+            "pr_box": pr_box,
+            "pr_dist": pr_dist,
+            "pr_iou": pr_iou,
+        }
+
         if epoch % 5 == 4 or args.test_run:
             for i, (valid_image, *gts) in enumerate(valid_data):
                 if args.test_run and i == 5:
@@ -168,48 +179,47 @@ def train(args, profiler=None):
 
                 with torch.no_grad():
                     valid_image = valid_image.to(device)
-                    valid_heatmaps = model(valid_image)
-                    detections = model.detections_from_heatmap(valid_heatmaps.squeeze(0))
+                    y_hat = model(valid_image)
+                    detections = model.detections_from_heatmap(y_hat.squeeze(0))
 
                     if i < 5:
                         # import pdb
                         # pdb.set_trace()
-                        valid_heatmap = valid_heatmaps[0]
-                        valid_peaks, _valid_sizes = dense_transforms.detections_to_heatmap(
+                        predicted_peaks, predicted_sizes = y_hat[:, :3], y_hat[:, 3:]
+                        valid_peaks, valid_sizes = dense_transforms.detections_to_heatmap(
                             gts, valid_image.shape[1:], device=device
                         )
-                        log(valid_logger, valid_image.squeeze(), valid_peaks, valid_heatmap, global_step + i)
+                        log(
+                            valid_logger,
+                            valid_image.squeeze(),
+                            valid_peaks,
+                            predicted_peaks[0],
+                            valid_sizes,
+                            predicted_sizes[0],
+                            global_step + i,
+                        )
 
                     for j, gt in enumerate(gts):
-                        pr_box[j].add(detections[j], gt)
-                        pr_dist[j].add(detections[j], gt)
-                        pr_iou[j].add(detections[j], gt)
+                        for pr in prs.values():
+                            pr[j].add(detections[j], gt)
 
-            average_box_precision = np.average([pr.average_prec for pr in pr_box])
-            valid_logger.add_scalars(
-                "pr_box",
-                {
-                    "karts": pr_box[0].average_prec,
-                    "bombs": pr_box[1].average_prec,
-                    "pickup": pr_box[2].average_prec,
-                    "average": average_box_precision,
-                },
-                global_step,
-            )
-            average_dist_precision = np.average([pr.average_prec for pr in pr_dist])
-            valid_logger.add_scalars(
-                "pr_dist",
-                {
-                    "karts": pr_dist[0].average_prec,
-                    "bombs": pr_dist[1].average_prec,
-                    "pickup": pr_dist[2].average_prec,
-                    "average": average_dist_precision,
-                },
-                global_step,
-            )
+            valid_accuracy = 0.0
+            for pr_label, pr in prs.items():
+                average_precision = np.average([p.average_prec for p in pr])
+                valid_accuracy += average_precision
+
+                valid_logger.add_scalars(
+                    pr_label,
+                    {
+                        "karts": pr_box[0].average_prec,
+                        "bombs": pr_box[1].average_prec,
+                        "pickup": pr_box[2].average_prec,
+                        "average": average_precision,
+                    },
+                    global_step,
+                )
 
             train_logger.add_scalar("lr", optimizer.param_groups[0]["lr"], global_step)
-            valid_accuracy = average_box_precision + average_dist_precision
             scheduler.step(valid_accuracy)
 
             print(
@@ -229,7 +239,7 @@ def train(args, profiler=None):
                 break
 
 
-def log(logger, img, gt_det, det, global_step):
+def log(logger, img, gt_det, det, gt_sizes, sizes, global_step):
     """
     logger: train_logger/valid_logger
     imgs: image tensor from data loader
@@ -237,7 +247,14 @@ def log(logger, img, gt_det, det, global_step):
     det: predicted object-center heatmaps
     global_step: iteration
     """
-    images = [img, gt_det, torch.sigmoid(det)]
+    zeros = torch.zeros((1, *img.shape[1:]))
+    images = [
+        img,
+        gt_det,
+        torch.sigmoid(det),
+        torch.sigmoid(torch.cat((gt_sizes, zeros), dim=0)),
+        torch.sigmoid(torch.cat((sizes, zeros), dim=0)),
+    ]
     logger.add_images("image", torch.stack(images), global_step)
 
 
@@ -249,7 +266,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_dir", default="log")
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--epochs", type=int, default=100)
-    parser.add_argument("--patience", type=int, default=10)
+    parser.add_argument("--patience", type=int, default=5)
     parser.add_argument("--weight_decay", type=float, default=0.0)
     parser.add_argument("--intense_augment", type=bool, default=True)
     parser.add_argument("--test_run", type=bool, default=False)
@@ -258,6 +275,8 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--profile", type=bool, default=False)
     parser.add_argument("--min_detect_score", type=float, default=0.02)
+    parser.add_argument("--peak_threshold", type=float, default=1e-3)
+    parser.add_argument("--peak_weight", type=float, default=0.7)
     # Put custom arguments here
 
     args = parser.parse_args()

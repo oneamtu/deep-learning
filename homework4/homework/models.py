@@ -120,7 +120,7 @@ class Detector(torch.nn.Module):
         self.downs = torch.nn.ModuleList([DownBlock(i, o, stride=2) for i, o in zip(layers[:-1], layers[1:])])
         self.ups = torch.nn.ModuleList([UpBlock(i, o, stride=2) for o, i in zip(layers[:-1], layers[1:])])
         self.dropout = torch.nn.Dropout()
-        self.classifier = torch.nn.Conv2d(layers[0], 3, kernel_size=1)
+        self.classifier = torch.nn.Conv2d(layers[0], 5, kernel_size=1)
 
         self.min_detect_score = min_detect_score
 
@@ -164,12 +164,17 @@ class Detector(torch.nn.Module):
 
     def detections_from_heatmap(self, class_heatmaps):
         result = []
-        for class_heatmap in class_heatmaps:
+        for class_heatmap in class_heatmaps[:3]:
             peaks = extract_peak(class_heatmap, min_score=self.min_detect_score)
             if len(peaks) > 0:
                 result.append(
                     torch.stack(
-                        [torch.tensor([score, cx, cy, 0, 0], dtype=float) for score, cx, cy in peaks],
+                        [
+                            torch.tensor(
+                                [score, cx, cy, class_heatmaps[3][cy][cx], class_heatmaps[4][cy][cx]], dtype=float
+                            )
+                            for score, cx, cy in peaks
+                        ],
                     )
                 )
             else:
@@ -181,6 +186,7 @@ def save_model(model):
     from torch import save
     from os import path
 
+    print("Saving model...")
     return save(model.state_dict(), path.join(path.dirname(path.abspath(__file__)), "det.th"))
 
 
