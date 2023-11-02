@@ -12,24 +12,18 @@ def extract_peak(heatmap, max_pool_ks=7, min_score=-5, max_det=100):
     @return: List of peaks [(score, cx, cy), ...], where cx, cy are the position of a peak and score is the
              heatmap value at the peak. Return no more than max_det peaks per image
     """
-    max_peaks = F.max_pool2d(
-        heatmap[None, None], max_pool_ks, padding=max_pool_ks // 2, stride=1
-    )
+    max_peaks = F.max_pool2d(heatmap[None, None], max_pool_ks, padding=max_pool_ks // 2, stride=1)
 
     # This is a tricky part -- we have to make sure the max of the coordinates of the peak matches
     # the value of the peak
     peak_filter = torch.eq(heatmap.view(-1), max_peaks.view(-1))
     matching_peaks = max_peaks.view(-1)[peak_filter]
 
-    top_peaks, top_indices = torch.topk(
-        matching_peaks, min(max_det, len(matching_peaks))
-    )
+    top_peaks, top_indices = torch.topk(matching_peaks, min(max_det, len(matching_peaks)))
     min_score_filter = torch.greater(top_peaks, min_score)
 
     peaks = top_peaks[min_score_filter]
-    peak_indices = torch.arange(len(heatmap.view(-1))).to(heatmap.device)[peak_filter][
-        top_indices[min_score_filter]
-    ]
+    peak_indices = torch.arange(len(heatmap.view(-1))).to(heatmap.device)[peak_filter][top_indices[min_score_filter]]
 
     return [
         (peak, cx, cy)
@@ -48,19 +42,13 @@ class DownBlock(torch.nn.Module):
         """
         super().__init__()
         self.block = torch.nn.Sequential(
-            torch.nn.Conv2d(
-                n_input, n_output, kernel_size=3, padding=1, stride=stride, bias=False
-            ),
+            torch.nn.Conv2d(n_input, n_output, kernel_size=3, padding=1, stride=stride, bias=False),
             torch.nn.BatchNorm2d(n_output),
             torch.nn.ReLU(),
-            torch.nn.Conv2d(
-                n_output, n_output, kernel_size=3, padding=1, stride=1, bias=False
-            ),
+            torch.nn.Conv2d(n_output, n_output, kernel_size=3, padding=1, stride=1, bias=False),
             torch.nn.BatchNorm2d(n_output),
             torch.nn.ReLU(),
-            torch.nn.Conv2d(
-                n_output, n_output, kernel_size=3, padding=1, stride=1, bias=False
-            ),
+            torch.nn.Conv2d(n_output, n_output, kernel_size=3, padding=1, stride=1, bias=False),
             torch.nn.BatchNorm2d(n_output),
             torch.nn.ReLU(),
         )
@@ -99,18 +87,14 @@ class UpBlock(torch.nn.Module):
             torch.nn.ReLU(),
         )
         self.concat_block = torch.nn.Sequential(
-            torch.nn.Conv2d(
-                2 * n_output, n_output, kernel_size=3, padding=1, bias=False
-            ),
+            torch.nn.Conv2d(2 * n_output, n_output, kernel_size=3, padding=1, bias=False),
             torch.nn.BatchNorm2d(n_output),
             torch.nn.ReLU(),
         )
         self.upsample = None
         if stride != 1 or n_input != n_output:
             self.upsample = torch.nn.Sequential(
-                torch.nn.ConvTranspose2d(
-                    n_input, n_output, 1, stride=stride, output_padding=stride - 1
-                ),
+                torch.nn.ConvTranspose2d(n_input, n_output, 1, stride=stride, output_padding=stride - 1),
                 torch.nn.BatchNorm2d(n_output),
             )
 
@@ -123,7 +107,7 @@ class UpBlock(torch.nn.Module):
 
 
 class Detector(torch.nn.Module):
-    def __init__(self, layers=[16, 32, 64, 128, 256], n_input_channels=3):
+    def __init__(self, layers=[16, 32, 64, 128, 256], n_input_channels=3, min_detect_score=0.02):
         """
         Your code here.
         Setup your detection network
@@ -132,17 +116,13 @@ class Detector(torch.nn.Module):
         self.mean = torch.tensor([0.2801, 0.2499, 0.2446])
         self.std_dev = torch.tensor([0.1922, 0.1739, 0.1801])
 
-        self.first_conv = torch.nn.Conv2d(
-            n_input_channels, layers[0], kernel_size=3, padding=1
-        )
-        self.downs = torch.nn.ModuleList(
-            [DownBlock(i, o, stride=2) for i, o in zip(layers[:-1], layers[1:])]
-        )
-        self.ups = torch.nn.ModuleList(
-            [UpBlock(i, o, stride=2) for o, i in zip(layers[:-1], layers[1:])]
-        )
+        self.first_conv = torch.nn.Conv2d(n_input_channels, layers[0], kernel_size=3, padding=1)
+        self.downs = torch.nn.ModuleList([DownBlock(i, o, stride=2) for i, o in zip(layers[:-1], layers[1:])])
+        self.ups = torch.nn.ModuleList([UpBlock(i, o, stride=2) for o, i in zip(layers[:-1], layers[1:])])
         self.dropout = torch.nn.Dropout()
         self.classifier = torch.nn.Conv2d(layers[0], 3, kernel_size=1)
+
+        self.min_detect_score = min_detect_score
 
     def forward(self, x):
         """
@@ -153,9 +133,7 @@ class Detector(torch.nn.Module):
         skip_ys = []
 
         # TODO: stdev vs variance; also dataset may be diff
-        normal_x = (x - self.mean[None, :, None, None].to(x.device)) / self.std_dev[
-            None, :, None, None
-        ].to(x.device)
+        normal_x = (x - self.mean[None, :, None, None].to(x.device)) / self.std_dev[None, :, None, None].to(x.device)
         y = self.first_conv(normal_x)
 
         for down in self.downs:
@@ -182,27 +160,28 @@ class Detector(torch.nn.Module):
               scalar. Otherwise pytorch might keep a computation graph in the background and your program will run
               out of memory.
         """
-        return self.detections_from_heatmap(
-            torch.sigmoid(self.forward(image).squeeze(0))
-        )
+        return self.detections_from_heatmap(torch.sigmoid(self.forward(image).squeeze(0)))
 
     def detections_from_heatmap(self, class_heatmaps):
-        return torch.stack(
-            [
-                torch.tensor([score, cx, cy, 0, 0], dtype=float)
-                for score, cx, cy in extract_peak(class_heatmap, min_score=0.02)
-            ]
-            for class_heatmap in class_heatmaps
-        )
+        result = []
+        for class_heatmap in class_heatmaps:
+            peaks = extract_peak(class_heatmap, min_score=self.min_detect_score)
+            if len(peaks) > 0:
+                result.append(
+                    torch.stack(
+                        [torch.tensor([score, cx, cy, 0, 0], dtype=float) for score, cx, cy in peaks],
+                    )
+                )
+            else:
+                result.append(torch.empty((0, 5), dtype=float))
+        return result
 
 
 def save_model(model):
     from torch import save
     from os import path
 
-    return save(
-        model.state_dict(), path.join(path.dirname(path.abspath(__file__)), "det.th")
-    )
+    return save(model.state_dict(), path.join(path.dirname(path.abspath(__file__)), "det.th"))
 
 
 def load_model():
@@ -269,8 +248,6 @@ if __name__ == "__main__":
         detections = model.detect(im.to(device))
         for c in range(3):
             for s, cx, cy, w, h in detections[c]:
-                ax.add_patch(
-                    patches.Circle((cx, cy), radius=max(2 + s / 2, 0.1), color="rgb"[c])
-                )
+                ax.add_patch(patches.Circle((cx, cy), radius=max(2 + s / 2, 0.1), color="rgb"[c]))
         ax.axis("off")
     show()
