@@ -134,7 +134,7 @@ def train(args, profiler=None):
             loss = peak_loss * args.peak_weight + size_loss * (1 - args.peak_weight)
 
             global_step = epoch * len(training_data) + i
-            train_logger.add_scalars({"peak_loss": peak_loss, "size_loss": size_loss, "loss": loss}, global_step)
+            train_logger.add_scalars("loss", {"peak": peak_loss, "size": size_loss, "sum": loss}, global_step)
 
             optimizer.zero_grad()
             loss.backward()

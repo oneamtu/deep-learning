@@ -162,16 +162,18 @@ class Detector(torch.nn.Module):
         """
         return self.detections_from_heatmap(torch.sigmoid(self.forward(image).squeeze(0)))
 
-    def detections_from_heatmap(self, class_heatmaps):
+    def detections_from_heatmap(self, class_heatmaps, max_pool_ks=7):
         result = []
+        max_pool_sizes = F.max_pool2d(class_heatmaps[None, 3:], max_pool_ks, padding=max_pool_ks // 2, stride=1).squeeze()
+
         for class_heatmap in class_heatmaps[:3]:
-            peaks = extract_peak(class_heatmap, min_score=self.min_detect_score)
+            peaks = extract_peak(class_heatmap, min_score=self.min_detect_score, max_pool_ks=max_pool_ks)
             if len(peaks) > 0:
                 result.append(
                     torch.stack(
                         [
                             torch.tensor(
-                                [score, cx, cy, class_heatmaps[3][cy][cx], class_heatmaps[4][cy][cx]], dtype=float
+                                [score, cx, cy, max_pool_sizes[0][cy][cx], max_pool_sizes[1][cy][cx]], dtype=float
                             )
                             for score, cx, cy in peaks
                         ],
