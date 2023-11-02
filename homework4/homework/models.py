@@ -190,14 +190,14 @@ def save_model(model):
     return save(model.state_dict(), path.join(path.dirname(path.abspath(__file__)), "det.th"))
 
 
-def load_model():
+def load_model(file_name="det.th"):
     from torch import load
     from os import path
 
     r = Detector()
     r.load_state_dict(
         load(
-            path.join(path.dirname(path.abspath(__file__)), "det.th"),
+            path.join(path.dirname(path.abspath(__file__)), file_name),
             map_location="cpu",
         )
     )

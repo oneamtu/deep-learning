@@ -171,7 +171,7 @@ class DetectorGrader(Grader):
     @Case(score=5)
     def test_format(self):
         """return value"""
-        det = self.module.load_model().eval()
+        det = self.module.load_model("best_det.th").eval()
         for i, (img, *gts) in enumerate(self.module.utils.DetectionSuperTuxDataset('dense_data/valid', min_size=0)):
             d = det.detect(img)
             assert len(d) == 3, 'Return three lists of detections'

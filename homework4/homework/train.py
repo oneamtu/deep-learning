@@ -60,8 +60,10 @@ def train(args, profiler=None):
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     print("device = ", device)
 
-    #     model = load_model().to(device)
-    model = Detector(min_detect_score=args.min_detect_score).to(device)
+    if args.pretrained:
+        model = load_model("best_det.th").to(device)
+    else:
+        model = Detector(min_detect_score=args.min_detect_score).to(device)
 
     train_logger, valid_logger = None, None
     if args.log_dir is not None:
@@ -125,14 +127,14 @@ def train(args, profiler=None):
             else:
                 peak_loss = FocalLoss(gamma=args.focal_gamma)(predicted_peaks, train_peaks)
 
-            peak_mask = torch.sum(predicted_peaks, dim=1, keepdim=True) > args.peak_threshold
+            peak_mask = torch.sum(train_peaks, dim=1, keepdim=True) > args.peak_threshold
             predicted_sizes = predicted_sizes * torch.cat((peak_mask, peak_mask), dim=1).float()
             size_loss = torch.nn.L1Loss()(predicted_sizes, train_sizes)
 
             loss = peak_loss * args.peak_weight + size_loss * (1 - args.peak_weight)
 
             global_step = epoch * len(training_data) + i
-            train_logger.add_scalar("loss", loss, global_step)
+            train_logger.add_scalars({"peak_loss": peak_loss, "size_loss": size_loss, "loss": loss}, global_step)
 
             optimizer.zero_grad()
             loss.backward()
@@ -211,9 +213,9 @@ def train(args, profiler=None):
                 valid_logger.add_scalars(
                     pr_label,
                     {
-                        "karts": pr_box[0].average_prec,
-                        "bombs": pr_box[1].average_prec,
-                        "pickup": pr_box[2].average_prec,
+                        "karts": pr[0].average_prec,
+                        "bombs": pr[1].average_prec,
+                        "pickup": pr[2].average_prec,
                         "average": average_precision,
                     },
                     global_step,
@@ -275,8 +277,9 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--profile", type=bool, default=False)
     parser.add_argument("--min_detect_score", type=float, default=0.02)
-    parser.add_argument("--peak_threshold", type=float, default=1e-3)
-    parser.add_argument("--peak_weight", type=float, default=0.7)
+    parser.add_argument("--peak_threshold", type=float, default=1e-4)
+    parser.add_argument("--peak_weight", type=float, default=0.3)
+    parser.add_argument("--pretrained", type=bool, default=False)
     # Put custom arguments here
 
     args = parser.parse_args()
