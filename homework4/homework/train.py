@@ -10,6 +10,8 @@ import torch.utils.tensorboard as tb
 
 from grader.tests import PR, point_close, box_iou
 
+from torch.profiler import profile, record_function, ProfilerActivity
+
 # implement pos_weight
 # pos_weight inf issue?
 # profile
@@ -107,7 +109,7 @@ def train(args):
             y_hat = model.forward(train_image)
 
             if args.loss == "bce":
-                positives = torch.count_nonzero(train_peaks, dim=(2, 3))
+                positives = torch.sum(train_peaks, dim=(2, 3))
                 negatives = torch.tensor([train_peaks.shape[2] * train_peaks.shape[3]]).to(device) - positives
                 pos_weight = (negatives/(positives + 1e-4)).unsqueeze(-1).unsqueeze(-1)
 
@@ -149,7 +151,7 @@ def train(args):
         pr_dist = [PR(is_close=point_close) for _ in range(3)]
         pr_iou = [PR(is_close=box_iou) for _ in range(3)]
 
-        if epoch % 20 == 19 or args.test_run:
+        if True: # args.test_run:
             for i, (valid_image, *gts) in enumerate(valid_data):
                 if args.test_run and i == 5:
                     break
@@ -235,4 +237,11 @@ if __name__ == '__main__':
     # Put custom arguments here
 
     args = parser.parse_args()
-    train(args)
+    with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA]) as prof:
+        train(args)
+    
+    print(prof.key_averages().table(sort_by="cpu_time_total", row_limit=50))
+    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=50))
+    print(prof.key_averages(group_by_stack_n=5).table(sort_by="self_cuda_time_total", row_limit=5))
+    prof.export_stacks("cuda_profiler_stacks.txt", "self_cuda_time_total")
+    prof.export_stacks("cpu_profiler_stacks.txt", "self_cpu_time_total")
