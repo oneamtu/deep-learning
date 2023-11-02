@@ -158,7 +158,7 @@ def train(args, profiler=None):
                 with torch.no_grad():
                     valid_image = valid_image.to(device)
                     valid_heatmaps = model(valid_image)
-                    detections = model.detections_from_heatmap(valid_heatmaps.squeeze())
+                    detections = model.detections_from_heatmap(valid_heatmaps.squeeze(0))
 
                     if i < 5:
                         # import pdb
