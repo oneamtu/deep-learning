@@ -13,9 +13,7 @@ from grader.tests import PR, point_close, box_iou
 from torch.profiler import profile, record_function, ProfilerActivity
 
 # foca loss?
-# A100
-# update # of channels
-# update detections
+# !python3 -m homework.train --log_dir log --batch_size 256 --epochs 200 --weight_decay=1e-4 --patience 6 --loss=bce --pretrained=True
 
 # https://github.com/clcarwin/focal_loss_pytorch/blob/e11e75bad957aecf641db6998a1016204722c1bb/focalloss.py#L6
 # https://arxiv.org/pdf/1708.02002v2.pdf
