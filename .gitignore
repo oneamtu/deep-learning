@@ -5,3 +5,4 @@ dense_data
 *.zip
 **/*.th
 **/*.bak
+*.svg
