@@ -1,14 +1,21 @@
 import pystk
 import numpy as np
 
-def control(aim_point, current_vel, steering_scalar=1., drift_angle=.5):
+
+CURRENT_BEST_SIMPLE_PARAMS = dict(steering_scalar=0.248227, y_scalar=0.0, drift_angle=0.843254)
+
+def control(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_SIMPLE_PARAMS) -> pystk.Action:
     """
     Set the Action for the low-level controller
     :param aim_point: Aim point, in screen coordinate frame [-1..1]
     :param current_vel: Current velocity of the kart
     :return: a pystk.Action (set acceleration, brake, steer, drift)
     """
+
     action = pystk.Action()
+    steering_scalar = params["steering_scalar"]
+    y_scalar = params["y_scalar"]
+    drift_angle = params["drift_angle"]
 
     """
     Your code here
@@ -20,11 +27,9 @@ def control(aim_point, current_vel, steering_scalar=1., drift_angle=.5):
     action.acceleration = 1.0
 
     # steering the kart towards aim_point
-    steering_angle = aim_point[0] * steering_scalar
+    steering_angle = aim_point[0] * steering_scalar + aim_point[1] * y_scalar
 
     action.steer = np.clip(steering_angle, -1, 1)
-
-    drift_angle = 0.5
 
     # enabling drift for wide turns
     if abs(steering_angle) > drift_angle:
@@ -40,6 +45,15 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
 
     def test_controller(args):
+        pytux = PyTux()
+
+        for t in args.track:
+            steps, how_far = pytux.rollout(t, control, max_frames=args.max_steps, verbose=args.verbose)
+            print(f"{args.track}: {how_far} in {steps} steps")
+
+        pytux.close()
+
+    def tune_controller(args):
         import numpy as np
         from ray import train, tune
 
@@ -47,15 +61,23 @@ if __name__ == "__main__":
             pytux = PyTux()
             from functools import partial
 
-            parameterized_control = partial(control, steering_scalar=params["steering_scalar"], drift_angle=params["drift_angle"])
+            parameterized_control = partial(control, params=params)
 
             # TODO: how to track multiple tracks
             for t in args.track:
-                steps, how_far = pytux.rollout(t, parameterized_control, max_frames=1000, verbose=args.verbose)
+                steps, how_far = pytux.rollout(
+                    t,
+                    parameterized_control,
+                    max_frames=args.max_steps,
+                    verbose=args.verbose,
+                    train=train,
+                    break_on_rescue=True,
+                )
 
             pytux.close()
-            # TODO: log this to tune as we go
             return {"steps": steps, "how_far": how_far}
+
+        trainable_with_resources = tune.with_resources(trainable, {"cpu": 16})
 
         import os
 
@@ -63,24 +85,62 @@ if __name__ == "__main__":
         cwd = os.getcwd()
 
         # Create the absolute path to the log directory
-        log_dir = os.path.join(cwd, 'log')
+        log_dir = os.path.join(cwd, "log")
 
-        scheduler = tune.schedulers.ASHAScheduler(
-            time_attr='steps',
-            max_t=100,
-            grace_period=1,
-            reduction_factor=2)
+        if args.pbt:
+            scheduler = tune.schedulers.PopulationBasedTraining(
+                time_attr="steps",
+                perturbation_interval=1,
+                hyperparam_mutations={
+                    "steering_scalar": tune.uniform(0.0, 5.0),
+                    "drift_angle": tune.uniform(0.0, 1.0),
+                },
+            )
+            search_alg = None
+        else:
+            scheduler = tune.schedulers.ASHAScheduler(
+                time_attr="steps", max_t=args.max_steps, grace_period=100
+            )
+            # from ray.tune.search.bayesopt import BayesOptSearch
 
-        tuner = tune.Tuner(trainable,
-            param_space={"steering_scalar": tune.uniform(0., 5.), "drift_angle": tune.uniform(0., 1.)},
-            tune_config=tune.TuneConfig(mode="max", metric="how_far", num_samples=10, scheduler=scheduler),
-            run_config=train.RunConfig(storage_path=f"file://{log_dir}", name="tune_controller"))
+            # search_alg = BayesOptSearch(
+            #     metric="how_far", mode="max", random_search_steps=10, points_to_evaluate=[CURRENT_BEST_SIMPLE_PARAMS]
+            # )
+
+            # from ray.tune.search.hyperopt import HyperOptSearch
+
+            # search_alg = tune.search.hyperopt.HyperOptSearch(metric="how_far", mode="max", n_initial_points=10, points_to_evaluate=[CURRENT_BEST_SIMPLE_PARAMS])
+
+        tuner = tune.Tuner(
+            trainable_with_resources,
+            param_space={
+                "steering_scalar": tune.randn(CURRENT_BEST_SIMPLE_PARAMS["steering_scalar"], 0.1),
+                "y_scalar": tune.randn(CURRENT_BEST_SIMPLE_PARAMS["y_scalar"], 0.1),
+                "drift_angle": tune.randn(CURRENT_BEST_SIMPLE_PARAMS["drift_angle"], 0.1),
+            },
+            tune_config=tune.TuneConfig(
+                scheduler=scheduler,
+                # search_alg=search_alg,
+                max_concurrent_trials=16,
+                mode="max",
+                metric="how_far",
+                num_samples=100,
+                reuse_actors=False,
+            ),
+            run_config=train.RunConfig(storage_path=f"file://{log_dir}", name="tune_controller"),
+        )
 
         results_grid = tuner.fit()
         print(results_grid.get_best_result())
 
     parser = ArgumentParser()
     parser.add_argument("track", nargs="+")
+    parser.add_argument("-s", "--max_steps", type=int, default=1000)
     parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument("-t", "--test_run", action="store_true")
+    parser.add_argument("--pbt", action="store_true")
     args = parser.parse_args()
-    test_controller(args)
+    if args.test_run:
+        test_controller(args)
+    else:
+        tune_controller(args)

@@ -65,9 +65,9 @@ class PyTux:
     @staticmethod
     def _to_image(x, proj, view):
         p = proj @ view @ np.array(list(x) + [1])
-        return np.clip(np.array([p[0] / p[-1], -p[1] / p[-1]]), -1, 1)
+        return np.array([p[0] / p[-1], -p[1] / p[-1]])
 
-    def rollout(self, track, controller, planner=None, max_frames=1000, verbose=False, data_callback=None):
+    def rollout(self, track, controller, planner=None, max_frames=1000, verbose=False, data_callback=None, train=None, break_on_rescue=False):
         """
         Play a level (track) for a single round.
         :param track: Name of the track
@@ -103,15 +103,14 @@ class PyTux:
             fig, ax = plt.subplots(1, 1)
 
         for t in range(max_frames):
-
             state.update()
             track.update()
 
             kart = state.players[0].kart
 
             if np.isclose(kart.overall_distance / track.length, 1.0, atol=2e-3):
-                if verbose:
-                    print("Finished at t=%d" % t)
+                # if verbose:
+                print("Finished at t=%d" % t)
                 break
 
             proj = np.array(state.players[0].camera.projection).T
@@ -132,6 +131,8 @@ class PyTux:
             if current_vel < 1.0 and t - last_rescue > RESCUE_TIMEOUT:
                 last_rescue = t
                 action.rescue = True
+                if break_on_rescue:
+                    break
 
             if verbose:
                 ax.clear()
@@ -146,6 +147,8 @@ class PyTux:
 
             self.k.step(action)
             t += 1
+            if train is not None:
+                train.report({"steps": t, "how_far": kart.overall_distance / track.length})
         return t, kart.overall_distance / track.length
     
     # rollouts = [Rollout.remote(50, 50, hd=False, render=False, frame_skip=5) for i in range(10)]

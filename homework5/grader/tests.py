@@ -82,6 +82,7 @@ class PySTKGrader(Grader):
                 action = self.C(aim_point_image, current_vel)
 
                 if current_vel <= 1.0 and t - last_rescue > RESCUE_TIMEOUT:
+                    print("RESCUED")
                     action.rescue = True
                     last_rescue = t
 
