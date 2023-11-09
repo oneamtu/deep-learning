@@ -9,7 +9,7 @@ import pystk
 RESCUE_TIMEOUT = 30
 TRACK_OFFSET = 15
 
-pystk_config = pystk.GraphicsConfig.hd()
+pystk_config = pystk.GraphicsConfig.none()
 pystk_config.screen_width = 128
 pystk_config.screen_height = 96
 
@@ -47,6 +47,9 @@ class PySTKGrader(Grader):
         config = pystk.RaceConfig(num_kart=1, laps=1)
         config.track = track
         config.players[0].controller = pystk.PlayerConfig.Controller.PLAYER_CONTROL
+
+        # import pdb
+        # pdb.set_trace()
 
         k = pystk.Race(config)
         try:

@@ -5,10 +5,11 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms.functional as TF
 from . import dense_transforms
 
+import ray
+
 RESCUE_TIMEOUT = 30
 TRACK_OFFSET = 15
 DATASET_PATH = 'drive_data'
-
 
 class SuperTuxDataset(Dataset):
     def __init__(self, dataset_path=DATASET_PATH, transform=dense_transforms.ToTensor()):
@@ -42,7 +43,7 @@ class PyTux:
     def __init__(self, screen_width=128, screen_height=96):
         assert PyTux._singleton is None, "Cannot create more than one pytux object"
         PyTux._singleton = self
-        self.config = pystk.GraphicsConfig.hd()
+        self.config = pystk.GraphicsConfig.none()
         self.config.screen_width = screen_width
         self.config.screen_height = screen_height
         pystk.init(self.config)
@@ -146,6 +147,13 @@ class PyTux:
             self.k.step(action)
             t += 1
         return t, kart.overall_distance / track.length
+    
+    # rollouts = [Rollout.remote(50, 50, hd=False, render=False, frame_skip=5) for i in range(10)]
+    # def rollout_many(many_agents, **kwargs):
+    #     ray_data = []
+    #     for i, agent in enumerate(many_agents):
+    #         ray_data.append(rollouts[i % len(rollouts)].__call__.remote(agent, **kwargs) )
+    #     return ray.get(ray_data)
 
     def close(self):
         """
