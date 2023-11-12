@@ -186,6 +186,7 @@ class PyTux:
                     {"steps": t, "how_far": kart.overall_distance / track.length, "rescue_count": rescue_count}
                 )
             if verbose:
+                print(f"Im Points: X: {aim_point_image[0]}, Y: {aim_point_image[1]}, Vel: {current_vel}")
                 print(f"Last action: A: {action.accelerate}, B: {action.brake}, D: {action.drift}, S: {action.steer}")
                 print({"steps": t, "how_far": kart.overall_distance / track.length, "rescue_count": rescue_count})
 
