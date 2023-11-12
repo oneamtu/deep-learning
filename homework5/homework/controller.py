@@ -2,8 +2,9 @@ import pystk
 import numpy as np
 import datetime
 
-# simple control 2
 # vision
+# nitro?
+# simple control 2
 # deep control 2 -- policy gradient
 
 
