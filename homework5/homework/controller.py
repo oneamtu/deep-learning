@@ -354,7 +354,7 @@ if __name__ == "__main__":
                 parameterized_control,
                 max_frames=args.max_steps,
                 verbose=args.verbose,
-                filename=f"test_{args.model}_{args.track}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                filename=f"test_{args.model}_{args.track}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4",
             )
             print(f"{args.track}: {how_far} in {steps} steps; {rescue_count} rescues")
 
