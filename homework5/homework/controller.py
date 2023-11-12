@@ -1,6 +1,10 @@
 import pystk
 import numpy as np
 
+# simple control 2
+# vision
+# deep control 2 -- policy gradient
+
 
 def control(aim_point: float, current_vel: float, control_type: str = "deep", params=None) -> pystk.Action:
     from functools import partial
@@ -75,7 +79,7 @@ def simple_control_2(aim_point: float, current_vel: float, params: dict = CURREN
     accelerate_cutoff = params["accelerate_cutoff"]
 
     # steering the kart towards aim_point
-    steering_angle = aim_point[0] * steering_scalar + aim_point[1] * y_scalar
+    steering_angle = steering_scalar * np.atan2(aim_point[0] / aim_point[1]) * np.sqrt(aim_point[0]**2 + aim_point[1]**2)
 
     action.steer = np.clip(steering_angle, -1, 1)
 
@@ -306,7 +310,7 @@ def deep_control(aim_point: float, current_vel: float, params: dict = CURRENT_BE
 
     action.steer = np.clip(output.item(0), -1, 1)
     action.brake = output.item(1) > 0
-    action.acceleration = np.clip(output.item(2), 0, 1)
+    action.acceleration = np.clip(output.item(2), 0.1, 1)
     action.drift = output.item(0) > values[-1]
 
     return action
@@ -317,7 +321,7 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
 
     def test_controller(args):
-        pytux = PyTux(graphics=False)
+        pytux = PyTux(graphics=args.graphics)
 
         from functools import partial
 
@@ -496,6 +500,7 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--max_steps", type=int, default=1000)
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("-t", "--test_run", action="store_true")
+    parser.add_argument("-g", "--graphics", action="store_true")
     parser.add_argument("--search_alg", default="random")
     parser.add_argument("--model", default="simple")
     args = parser.parse_args()
