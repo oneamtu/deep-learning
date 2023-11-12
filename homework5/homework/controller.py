@@ -336,6 +336,7 @@ if __name__ == "__main__":
             )
             print(f"{args.track}: {how_far} in {steps} steps; {rescue_count} rescues")
 
+        PyTux._singleton = None
         pytux.close()
         del pytux
 
@@ -368,6 +369,7 @@ if __name__ == "__main__":
                     break_on_rescue=True,
                 )
 
+            PyTux._singleton = None
             pytux.close()
             del pytux
             return {"steps": steps, "how_far": how_far, "rescue_count": rescue_count}
