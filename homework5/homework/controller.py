@@ -88,7 +88,7 @@ def linear_control(aim_point: float, current_vel: float, params: dict = CURRENT_
     return action
 
 
-LAYERS = [(6, 3), (2, 6)]
+LAYERS = [(6, 3), (3, 6)]
 DEEP_SIZE = np.sum([np.prod(l) for l in LAYERS]) + 1
 # how_far=0.5069099644349553
 CURRENT_BEST_DEEP_PARAMS_DRIFT = {
@@ -123,7 +123,6 @@ CURRENT_BEST_DEEP_PARAMS_DRIFT = {
     "w28": 1.9002478454630145,
     "w29": 0.2850339160182646,
 }
-# CURRENT_BEST_DEEP_PARAMS = dict([[f"w{i}", np.random.randn()] for i in range(DEEP_SIZE)])
 # how_far=0.571800059921367
 CURRENT_BEST_DEEP_PARAMS = {
     "w0": -1.9679861512734895,
@@ -158,6 +157,47 @@ CURRENT_BEST_DEEP_PARAMS = {
     "w29": 2.1073171102855,
     "w30": 2.288388622621965,
 }
+CURRENT_BEST_DEEP_PARAMS = dict([[f"w{i}", np.random.randn()] for i in range(DEEP_SIZE)])
+# how_far=0.9998399645827123 and
+CURRENT_BEST_DEEP_PARAMS = {
+    "w0": 0.24463741326543617,
+    "w1": 0.16133385815356197,
+    "w2": -0.36406581428357393,
+    "w3": -1.8366201126031807,
+    "w4": 0.29980400803242346,
+    "w5": -1.1392804017331064,
+    "w6": -0.2295716471459887,
+    "w7": -0.4565519245049096,
+    "w8": -1.9763834413544017,
+    "w9": -0.3322936575382293,
+    "w10": -2.360725006306945,
+    "w11": 0.2433132645203753,
+    "w12": -0.8114169896718367,
+    "w13": 1.026902802257022,
+    "w14": 0.10802357093288523,
+    "w15": -0.40167815531479567,
+    "w16": -0.028715024725307153,
+    "w17": 0.808619792858487,
+    "w18": 2.144811455515947,
+    "w19": -1.0262777867658577,
+    "w20": -2.1866959535272223,
+    "w21": 1.3437839405955698,
+    "w22": -0.43402987755783023,
+    "w23": -0.19519811640993723,
+    "w24": 0.8665190785288938,
+    "w25": -0.7323037230387939,
+    "w26": -1.0016766901488017,
+    "w27": 0.9081075998858493,
+    "w28": 0.6488800677005783,
+    "w29": -0.4808397134524566,
+    "w30": 0.25194112818852016,
+    "w31": 0.9300698445532001,
+    "w32": -1.5057113898254417,
+    "w33": 0.16048697887565105,
+    "w34": -1.1562035925756138,
+    "w35": -0.4843793548419946,
+    "w36": 0.8799677423358669,
+}
 # TUNE_MAX_PENDING_TRIALS_PG=16 python3 -m homework.controller lighthouse  -s 550 --model deep --search_alg bayes
 
 
@@ -182,8 +222,8 @@ def deep_control(aim_point: float, current_vel: float, params: dict = CURRENT_BE
     output = linear_2 @ relu_1.T
 
     action.steer = np.clip(output.item(0), -1, 1)
-    action.acceleration = 1.0
     action.brake = output.item(1) > 0
+    action.acceleration = np.clip(output.item(2), 0, 1)
     action.drift = output.item(0) > values[-1]
 
     return action
@@ -194,7 +234,7 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
 
     def test_controller(args):
-        pytux = PyTux()
+        pytux = PyTux(graphics=False)
 
         from functools import partial
 
@@ -217,7 +257,7 @@ if __name__ == "__main__":
         print(f"DASHBOARD URL: {context.dashboard_url}")
 
         def trainable(params):
-            pytux = PyTux()
+            pytux = PyTux(graphics=False)
             from functools import partial
 
             parameterized_control = partial(control, params=params, control_type=args.model)
