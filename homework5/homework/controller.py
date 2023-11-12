@@ -247,6 +247,7 @@ if __name__ == "__main__":
             print(f"{args.track}: {how_far} in {steps} steps; {rescue_count} rescues")
 
         pytux.close()
+        del pytux
 
     def tune_controller(args):
         import numpy as np
@@ -274,6 +275,7 @@ if __name__ == "__main__":
                 )
 
             pytux.close()
+            del pytux
             return {"steps": steps, "how_far": how_far, "rescue_count": rescue_count}
 
         import os
