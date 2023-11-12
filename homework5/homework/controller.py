@@ -1,5 +1,6 @@
 import pystk
 import numpy as np
+import datetime
 
 # simple control 2
 # vision
@@ -64,6 +65,7 @@ def simple_control(aim_point: float, current_vel: float, params: dict = CURRENT_
 
     return action
 
+
 def simple_control_2(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_SIMPLE_PARAMS) -> pystk.Action:
     """
     Set the Action for the low-level controller
@@ -79,7 +81,9 @@ def simple_control_2(aim_point: float, current_vel: float, params: dict = CURREN
     accelerate_cutoff = params["accelerate_cutoff"]
 
     # steering the kart towards aim_point
-    steering_angle = steering_scalar * np.atan2(aim_point[0] / aim_point[1]) * np.sqrt(aim_point[0]**2 + aim_point[1]**2)
+    steering_angle = (
+        steering_scalar * np.atan2(aim_point[0] / aim_point[1]) * np.sqrt(aim_point[0] ** 2 + aim_point[1] ** 2)
+    )
 
     action.steer = np.clip(steering_angle, -1, 1)
 
@@ -164,7 +168,10 @@ CURRENT_BEST_DEEP_DRIFT_PARAMS = {
     "w29": 0.2850339160182646,
 }
 
-def deep_control_drift(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_DEEP_DRIFT_PARAMS) -> pystk.Action:
+
+def deep_control_drift(
+    aim_point: float, current_vel: float, params: dict = CURRENT_BEST_DEEP_DRIFT_PARAMS
+) -> pystk.Action:
     """
     Set the Action for the low-level controller
     :param aim_point: Aim point, in screen coordinate frame [-1..1]
@@ -178,7 +185,9 @@ def deep_control_drift(aim_point: float, current_vel: float, params: dict = CURR
     output_1 = linear_1 @ np.array([*aim_point, current_vel])
     relu_1 = np.maximum(output_1, 0)
 
-    linear_2 = np.matrix(values[np.prod(DRIFT_LAYERS[0]) : (np.prod(DRIFT_LAYERS[0]) + np.prod(DRIFT_LAYERS[1]))]).reshape(DRIFT_LAYERS[1])
+    linear_2 = np.matrix(
+        values[np.prod(DRIFT_LAYERS[0]) : (np.prod(DRIFT_LAYERS[0]) + np.prod(DRIFT_LAYERS[1]))]
+    ).reshape(DRIFT_LAYERS[1])
     output = linear_2 @ relu_1.T
 
     action.steer = np.clip(output.item(0), -1, 1)
@@ -186,6 +195,7 @@ def deep_control_drift(aim_point: float, current_vel: float, params: dict = CURR
     action.acceleration = 1.0
 
     return action
+
 
 BRAKE_LAYERS = [(6, 3), (2, 6)]
 # how_far=0.571800059921367
@@ -222,7 +232,11 @@ CURRENT_BEST_DEEP_BRAKE_PARAMS = {
     "w29": 2.1073171102855,
     "w30": 2.288388622621965,
 }
-def deep_control_brake(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_DEEP_BRAKE_PARAMS) -> pystk.Action:
+
+
+def deep_control_brake(
+    aim_point: float, current_vel: float, params: dict = CURRENT_BEST_DEEP_BRAKE_PARAMS
+) -> pystk.Action:
     """
     Set the Action for the low-level controller
     :param aim_point: Aim point, in screen coordinate frame [-1..1]
@@ -236,7 +250,9 @@ def deep_control_brake(aim_point: float, current_vel: float, params: dict = CURR
     output_1 = linear_1 @ np.array([*aim_point, current_vel])
     relu_1 = np.maximum(output_1, 0)
 
-    linear_2 = np.matrix(values[np.prod(BRAKE_LAYERS[0]) : (np.prod(BRAKE_LAYERS[0]) + np.prod(BRAKE_LAYERS[1]))]).reshape(BRAKE_LAYERS[1])
+    linear_2 = np.matrix(
+        values[np.prod(BRAKE_LAYERS[0]) : (np.prod(BRAKE_LAYERS[0]) + np.prod(BRAKE_LAYERS[1]))]
+    ).reshape(BRAKE_LAYERS[1])
     output = linear_2 @ relu_1.T
 
     action.steer = np.clip(output.item(0), -1, 1)
@@ -245,6 +261,7 @@ def deep_control_brake(aim_point: float, current_vel: float, params: dict = CURR
     action.acceleration = 1.0
 
     return action
+
 
 LAYERS = [(6, 3), (3, 6)]
 DEEP_SIZE = np.sum([np.prod(l) for l in LAYERS]) + 1
@@ -291,6 +308,7 @@ CURRENT_BEST_DEEP_PARAMS = {
 # CURRENT_BEST_DEEP_PARAMS = dict([[f"w{i}", np.random.randn()] for i in range(DEEP_SIZE)])
 # TUNE_MAX_PENDING_TRIALS_PG=16 python3 -m homework.controller lighthouse  -s 550 --model deep --search_alg bayes
 
+
 def deep_control(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_DEEP_PARAMS) -> pystk.Action:
     """
     Set the Action for the low-level controller
@@ -332,7 +350,11 @@ if __name__ == "__main__":
 
         for t in args.track:
             steps, how_far, rescue_count = pytux.rollout(
-                t, parameterized_control, max_frames=args.max_steps, verbose=args.verbose
+                t,
+                parameterized_control,
+                max_frames=args.max_steps,
+                verbose=args.verbose,
+                filename=f"test_{args.model}_{args.track}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}",
             )
             print(f"{args.track}: {how_far} in {steps} steps; {rescue_count} rescues")
 
@@ -481,8 +503,6 @@ if __name__ == "__main__":
             from ray.tune.search.ax import AxSearch
 
             search_alg = AxSearch(metric="how_far", mode="max", points_to_evaluate=best_points)
-
-        import datetime
 
         tuner = tune.Tuner(
             tune.with_resources(trainable, {"cpu": 1, "gpu": 0}),

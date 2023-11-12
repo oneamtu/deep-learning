@@ -83,6 +83,7 @@ class PyTux:
         data_callback=None,
         train=None,
         break_on_rescue=False,
+        filename="test.mp4",
     ):
         """
         Play a level (track) for a single round.
@@ -170,8 +171,17 @@ class PyTux:
                     ax.add_artist(plt.Circle(WH2 * (1 + aim_point_image), 2, ec="g", fill=False, lw=1.5))
                 plt.pause(1e-3)
 
+                text = "\n".join(
+                    (
+                        f"Im Points: X: {aim_point_image[0]}, Y: {aim_point_image[1]}, Vel: {current_vel}",
+                        f"Last action: A: {action.acceleration}, B: {action.brake}, D: {action.drift}, S: {action.steer}",
+                        f"steps: {t}, how_far: {kart.overall_distance / track.length}, rescue_count: {rescue_count}",
+                    )
+                )
+                ax.text(0.5, 0.5, text, alpha=0.8, verticalalignment="top")
+
                 with io.BytesIO() as buff:
-                    fig.savefig(buff, format='raw')
+                    fig.savefig(buff, format="raw")
                     buff.seek(0)
                     data = np.frombuffer(buff.getvalue(), dtype=np.uint8)
                 w, h = fig.canvas.get_width_height()
@@ -185,15 +195,11 @@ class PyTux:
                 train.report(
                     {"steps": t, "how_far": kart.overall_distance / track.length, "rescue_count": rescue_count}
                 )
-            if verbose:
-                print(f"Im Points: X: {aim_point_image[0]}, Y: {aim_point_image[1]}, Vel: {current_vel}")
-                print(f"Last action: A: {action.accelerate}, B: {action.brake}, D: {action.drift}, S: {action.steer}")
-                print({"steps": t, "how_far": kart.overall_distance / track.length, "rescue_count": rescue_count})
 
         if verbose:
             import imageio
 
-            imageio.mimwrite("test.mp4", frames, fps=30, bitrate=1000000)
+            imageio.mimwrite(filename, frames, fps=30, bitrate=1000000)
 
         return t, kart.overall_distance / track.length, rescue_count
 
