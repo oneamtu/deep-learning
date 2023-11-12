@@ -11,6 +11,10 @@ def control(aim_point: float, current_vel: float, control_type: str = "deep", pa
         f = linear_control
     elif control_type == "deep":
         f = deep_control
+    elif control_type == "deep_brake":
+        f = deep_control_brake
+    elif control_type == "deep_drift":
+        f = deep_control_drift
     else:
         raise f"Unknown control_type {control_type}"
 
@@ -24,6 +28,39 @@ CURRENT_BEST_SIMPLE_PARAMS = dict(
 
 # 8/100
 def simple_control(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_SIMPLE_PARAMS) -> pystk.Action:
+    """
+    Set the Action for the low-level controller
+    :param aim_point: Aim point, in screen coordinate frame [-1..1]
+    :param current_vel: Current velocity of the kart
+    :return: a pystk.Action (set acceleration, brake, steer, drift)
+    """
+
+    action = pystk.Action()
+    steering_scalar = params["steering_scalar"]
+    y_scalar = params["y_scalar"]
+    drift_angle = params["drift_angle"]
+    accelerate_cutoff = params["accelerate_cutoff"]
+
+    # steering the kart towards aim_point
+    steering_angle = aim_point[0] * steering_scalar + aim_point[1] * y_scalar
+
+    action.steer = np.clip(steering_angle, -1, 1)
+
+    # enabling drift for wide turns
+    if abs(steering_angle) > drift_angle:
+        action.drift = True
+    else:
+        action.drift = False
+
+    if abs(steering_angle) > accelerate_cutoff:
+        action.brake = True
+        action.acceleration = 1.0
+    else:
+        action.acceleration = 1.0
+
+    return action
+
+def simple_control_2(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_SIMPLE_PARAMS) -> pystk.Action:
     """
     Set the Action for the low-level controller
     :param aim_point: Aim point, in screen coordinate frame [-1..1]
@@ -88,10 +125,9 @@ def linear_control(aim_point: float, current_vel: float, params: dict = CURRENT_
     return action
 
 
-LAYERS = [(6, 3), (3, 6)]
-DEEP_SIZE = np.sum([np.prod(l) for l in LAYERS]) + 1
+BRAKE_LAYERS = [(6, 3), (2, 6)]
 # how_far=0.5069099644349553
-CURRENT_BEST_DEEP_PARAMS_DRIFT = {
+CURRENT_BEST_DEEP_DRIFT_PARAMS = {
     "w0": 1.1516428102031477,
     "w1": 1.1227902394251428,
     "w2": 0.7555013377402726,
@@ -123,8 +159,34 @@ CURRENT_BEST_DEEP_PARAMS_DRIFT = {
     "w28": 1.9002478454630145,
     "w29": 0.2850339160182646,
 }
+
+def deep_control_drift(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_DEEP_DRIFT_PARAMS) -> pystk.Action:
+    """
+    Set the Action for the low-level controller
+    :param aim_point: Aim point, in screen coordinate frame [-1..1]
+    :param current_vel: Current velocity of the kart
+    :return: a pystk.Action (set acceleration, brake, steer, drift)
+    """
+    action = pystk.Action()
+    values = [v for v in params.values()]
+
+    linear_1 = np.matrix(values[: np.prod(LAYERS[0])]).reshape(LAYERS[0])
+    output_1 = linear_1 @ np.array([*aim_point, current_vel])
+    relu_1 = np.maximum(output_1, 0)
+
+    linear_2 = np.matrix(values[np.prod(LAYERS[0]) : (np.prod(LAYERS[0]) + np.prod(LAYERS[1]))]).reshape(LAYERS[1])
+    output = linear_2 @ relu_1.T
+
+    action.steer = np.clip(output.item(0), -1, 1)
+    action.drift = output.item(1) > 0
+    action.acceleration = 1.0
+
+    return action
+
+BRAKE_LAYERS = [(6, 3), (2, 6)]
+DEEP_SIZE = np.sum([np.prod(l) for l in LAYERS]) + 1
 # how_far=0.571800059921367
-CURRENT_BEST_DEEP_PARAMS = {
+CURRENT_BEST_DEEP_BRAKE_PARAMS = {
     "w0": -1.9679861512734895,
     "w1": 0.7755947642736905,
     "w2": -0.5223720316484727,
@@ -157,7 +219,32 @@ CURRENT_BEST_DEEP_PARAMS = {
     "w29": 2.1073171102855,
     "w30": 2.288388622621965,
 }
-CURRENT_BEST_DEEP_PARAMS = dict([[f"w{i}", np.random.randn()] for i in range(DEEP_SIZE)])
+def deep_control_brake(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_DEEP_BRAKE_PARAMS) -> pystk.Action:
+    """
+    Set the Action for the low-level controller
+    :param aim_point: Aim point, in screen coordinate frame [-1..1]
+    :param current_vel: Current velocity of the kart
+    :return: a pystk.Action (set acceleration, brake, steer, drift)
+    """
+    action = pystk.Action()
+    values = [v for v in params.values()]
+
+    linear_1 = np.matrix(values[: np.prod(BRAKE_LAYERS[0])]).reshape(BRAKE_LAYERS[0])
+    output_1 = linear_1 @ np.array([*aim_point, current_vel])
+    relu_1 = np.maximum(output_1, 0)
+
+    linear_2 = np.matrix(values[np.prod(BRAKE_LAYERS[0]) : (np.prod(BRAKE_LAYERS[0]) + np.prod(BRAKE_LAYERS[1]))]).reshape(BRAKE_LAYERS[1])
+    output = linear_2 @ relu_1.T
+
+    action.steer = np.clip(output.item(0), -1, 1)
+    action.brake = output.item(1) > 0
+    action.drift = output.item(0) > values[-1]
+    action.acceleration = 1.0
+
+    return action
+
+LAYERS = [(6, 3), (3, 6)]
+DEEP_SIZE = np.sum([np.prod(l) for l in LAYERS]) + 1
 # how_far=0.9998399645827123 and
 CURRENT_BEST_DEEP_PARAMS = {
     "w0": 0.24463741326543617,
@@ -198,12 +285,9 @@ CURRENT_BEST_DEEP_PARAMS = {
     "w35": -0.4843793548419946,
     "w36": 0.8799677423358669,
 }
+# CURRENT_BEST_DEEP_PARAMS = dict([[f"w{i}", np.random.randn()] for i in range(DEEP_SIZE)])
 # TUNE_MAX_PENDING_TRIALS_PG=16 python3 -m homework.controller lighthouse  -s 550 --model deep --search_alg bayes
 
-
-# fine search
-# deeper network
-# control for break
 def deep_control(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_DEEP_PARAMS) -> pystk.Action:
     """
     Set the Action for the low-level controller
