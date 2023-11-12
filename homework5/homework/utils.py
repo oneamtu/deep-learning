@@ -195,7 +195,7 @@ class PyTux:
                 train.report(
                     {"steps": t, "how_far": kart.overall_distance / track.length, "rescue_count": rescue_count}
                 )
-            if True:
+            if False:
                 text = "\n".join(
                     (
                         f"Im Points: X: {aim_point_image[0]:.4f}, Y: {aim_point_image[1]:.4f}, Vel: {current_vel:.4f}",
