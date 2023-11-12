@@ -2,9 +2,28 @@ import pystk
 import numpy as np
 
 
-CURRENT_BEST_SIMPLE_PARAMS = dict(steering_scalar=0.248227, y_scalar=0.0, drift_angle=0.843254)
+def control(aim_point: float, current_vel: float, control_type: str = "deep", params=None) -> pystk.Action:
+    from functools import partial
 
-def control(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_SIMPLE_PARAMS) -> pystk.Action:
+    if control_type == "simple":
+        f = simple_control
+    elif control_type == "linear":
+        f = linear_control
+    elif control_type == "deep":
+        f = deep_control
+    else:
+        raise f"Unknown control_type {control_type}"
+
+    return f(aim_point, current_vel) if params is None else f(aim_point, current_vel, params=params)
+
+
+CURRENT_BEST_SIMPLE_PARAMS = dict(
+    steering_scalar=0.3237, y_scalar=-0.0248, drift_angle=0.8783, accelerate_cutoff=0.8570
+)
+
+
+# 8/100
+def simple_control(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_SIMPLE_PARAMS) -> pystk.Action:
     """
     Set the Action for the low-level controller
     :param aim_point: Aim point, in screen coordinate frame [-1..1]
@@ -16,15 +35,8 @@ def control(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_SI
     steering_scalar = params["steering_scalar"]
     y_scalar = params["y_scalar"]
     drift_angle = params["drift_angle"]
-
-    """
-    Your code here
-    Hint: Use action.acceleration (0..1) to change the velocity. Try targeting a target_velocity (e.g. 20).
-    Hint: Use action.brake to True/False to brake (optionally)
-    Hint: Use action.steer to turn the kart towards the aim_point, clip the steer angle to -1..1
-    Hint: You may want to use action.drift=True for wide turns (it will turn faster)
-    """
-    action.acceleration = 1.0
+    accelerate_cutoff = params["accelerate_cutoff"]
+    brake_scalar = params["brake_scalar"]
 
     # steering the kart towards aim_point
     steering_angle = aim_point[0] * steering_scalar + aim_point[1] * y_scalar
@@ -37,6 +49,110 @@ def control(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_SI
     else:
         action.drift = False
 
+    if abs(steering_angle) + current_vel * brake_scalar > accelerate_cutoff:
+        action.brake = True
+    else:
+        action.acceleration = 1.0
+
+    return action
+
+
+LINEAR_SIZE = (2, 3)
+CURRENT_BEST_LINEAR_PARAMS = {
+    "w0": -2.8160011091392554,
+    "w1": 0.2512532117224574,
+    "w2": 0.18879930520217497,
+    "w3": 1.4292673039888695,
+    "w4": -0.26967411554419424,
+    "w5": 0.9915393249773421,
+}
+
+
+# 10/100
+def linear_control(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_LINEAR_PARAMS) -> pystk.Action:
+    """
+    Set the Action for the low-level controller
+    :param aim_point: Aim point, in screen coordinate frame [-1..1]
+    :param current_vel: Current velocity of the kart
+    :return: a pystk.Action (set acceleration, brake, steer, drift)
+    """
+    action = pystk.Action()
+    linear = np.matrix([v for v in params.values()]).reshape(LINEAR_SIZE)
+
+    output = linear @ np.array([*aim_point, current_vel])
+
+    action.steer = np.clip(output.item(0), -1, 1)
+    action.acceleration = 1.0 / (1.0 + np.exp(-output.item(1)))
+    action.drift = output.item(0) > CURRENT_BEST_SIMPLE_PARAMS["drift_angle"]
+
+    return action
+
+
+LAYERS = [(6, 3), (2, 6)]
+DEEP_SIZE = np.sum([np.prod(l) for l in LAYERS]) + 1
+# how_far=0.5069099644349553
+CURRENT_BEST_DEEP_PARAMS_DRIFT = {
+    "w0": 1.1516428102031477,
+    "w1": 1.1227902394251428,
+    "w2": 0.7555013377402726,
+    "w3": -0.3440549602041101,
+    "w4": 0.03350519035320991,
+    "w5": 1.112714271966624,
+    "w6": 0.2586178979815187,
+    "w7": -0.3928629680664677,
+    "w8": -0.7636926670549435,
+    "w9": 0.1475081526942162,
+    "w10": -1.1358212940664671,
+    "w11": -0.7588574018162755,
+    "w12": 0.1030699191881122,
+    "w13": -0.5613961296950909,
+    "w14": -0.014646510109433191,
+    "w15": -0.8441565498195834,
+    "w16": 0.7108323424986188,
+    "w17": -0.4906555959340215,
+    "w18": 0.3552653649173329,
+    "w19": -0.19922877019126442,
+    "w20": 1.4815002830548696,
+    "w21": 1.7729058962844295,
+    "w22": -0.3714282542910141,
+    "w23": -0.3461753829678067,
+    "w24": -1.4373230876595957,
+    "w25": -1.396944915876797,
+    "w26": -0.8566980526904837,
+    "w27": 0.5472473719838779,
+    "w28": 1.9002478454630145,
+    "w29": 0.2850339160182646,
+}
+# CURRENT_BEST_DEEP_PARAMS = dict([[f"w{i}", np.random.randn()] for i in range(DEEP_SIZE)])
+# how_far=0.46880995041538104 
+CURRENT_BEST_DEEP_PARAMS= {'w0': -1.8959114141826166, 'w1': 0.7002110490546412, 'w2': -0.5932982707483205, 'w3': -0.08326540124534565, 'w4': -1.481151628624243, 'w5': -0.346492865840396, 'w6': -1.2725978269608436, 'w7': 1.318334300337069, 'w8': -0.11026900040399379, 'w9': 2.2570720203745673, 'w10': 1.153978909354982, 'w11': -1.4257286344545912, 'w12': 0.38642046997545876, 'w13': 0.021472820370094514, 'w14': -0.06914184907909923, 'w15': 0.4373187859589191, 'w16': -1.1758758414493762, 'w17': -0.5335327333635809, 'w18': 0.06815470698372335, 'w19': -0.11816208913004864, 'w20': -0.4368365140073228, 'w21': -0.17305834043878532, 'w22': 0.19781047573248609, 'w23': 2.1906549089744645, 'w24': -2.1679741720848633, 'w25': -0.09774421796330858, 'w26': -0.9342607509045244, 'w27': -0.36767018178064953, 'w28': -0.36248962591377226, 'w29': 2.0836791805922408, 'w30': 2.380230421331276}
+# TUNE_MAX_PENDING_TRIALS_PG=16 python3 -m homework.controller lighthouse  -s 550 --model deep --search_alg bayes
+
+# fine search
+# deeper network
+# control for break
+def deep_control(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_DEEP_PARAMS) -> pystk.Action:
+    """
+    Set the Action for the low-level controller
+    :param aim_point: Aim point, in screen coordinate frame [-1..1]
+    :param current_vel: Current velocity of the kart
+    :return: a pystk.Action (set acceleration, brake, steer, drift)
+    """
+    action = pystk.Action()
+    values = [v for v in params.values()]
+
+    linear_1 = np.matrix(values[: np.prod(LAYERS[0])]).reshape(LAYERS[0])
+    output_1 = linear_1 @ np.array([*aim_point, current_vel])
+    relu_1 = np.maximum(output_1, 0)
+
+    linear_2 = np.matrix(values[np.prod(LAYERS[0]) : (np.prod(LAYERS[0]) + np.prod(LAYERS[1]))]).reshape(LAYERS[1])
+    output = linear_2 @ relu_1.T
+
+    action.steer = np.clip(output.item(0), -1, 1)
+    action.acceleration = 1.0
+    action.brake = output.item(1) > 0
+    action.drift = output.item(0) > values[-1]
+
     return action
 
 
@@ -47,25 +163,35 @@ if __name__ == "__main__":
     def test_controller(args):
         pytux = PyTux()
 
+        from functools import partial
+
+        parameterized_control = partial(control, control_type=args.model)
+
         for t in args.track:
-            steps, how_far = pytux.rollout(t, control, max_frames=args.max_steps, verbose=args.verbose)
-            print(f"{args.track}: {how_far} in {steps} steps")
+            steps, how_far, rescue_count = pytux.rollout(
+                t, parameterized_control, max_frames=args.max_steps, verbose=args.verbose
+            )
+            print(f"{args.track}: {how_far} in {steps} steps; {rescue_count} rescues")
 
         pytux.close()
 
     def tune_controller(args):
         import numpy as np
+        import ray
         from ray import train, tune
+
+        context = ray.init()
+        print(f"DASHBOARD URL: {context.dashboard_url}")
 
         def trainable(params):
             pytux = PyTux()
             from functools import partial
 
-            parameterized_control = partial(control, params=params)
+            parameterized_control = partial(control, params=params, control_type=args.model)
 
             # TODO: how to track multiple tracks
             for t in args.track:
-                steps, how_far = pytux.rollout(
+                steps, how_far, rescue_count = pytux.rollout(
                     t,
                     parameterized_control,
                     max_frames=args.max_steps,
@@ -75,9 +201,7 @@ if __name__ == "__main__":
                 )
 
             pytux.close()
-            return {"steps": steps, "how_far": how_far}
-
-        trainable_with_resources = tune.with_resources(trainable, {"cpu": 16})
+            return {"steps": steps, "how_far": how_far, "rescue_count": rescue_count}
 
         import os
 
@@ -87,7 +211,56 @@ if __name__ == "__main__":
         # Create the absolute path to the log directory
         log_dir = os.path.join(cwd, "log")
 
-        if args.pbt:
+        epsilon = 1e-1
+
+        if args.model == "simple":
+            best_points = [CURRENT_BEST_SIMPLE_PARAMS]
+            param_space = {
+                "steering_scalar": tune.uniform(0.0, 3.0),
+                "y_scalar": tune.uniform(0.0, 1.0),
+                "drift_angle": tune.uniform(0.5, 1.0),
+                "accelerate_cutoff": tune.uniform(0.5, 1.0),
+            }
+        elif args.model == "linear":
+            best_points = [CURRENT_BEST_LINEAR_PARAMS]
+            size = np.prod(LINEAR_SIZE)
+            param_space = dict([[f"w{i}", tune.randn()] for i in range(size)])
+
+            if args.search_alg == "random":
+                param_space = dict([[f"w{i}", tune.randn()] for i in range(size)])
+            else:
+                param_space = dict(
+                    [
+                        [
+                            f"w{i}",
+                            tune.uniform(
+                                CURRENT_BEST_LINEAR_PARAMS[f"w{i}"] - epsilon,
+                                CURRENT_BEST_LINEAR_PARAMS[f"w{i}"] + epsilon,
+                            ),
+                        ]
+                        for i in range(size)
+                    ]
+                )
+        elif args.model == "deep":
+            best_points = [CURRENT_BEST_DEEP_PARAMS]
+
+            if args.search_alg == "random":
+                param_space = dict([[f"w{i}", tune.randn()] for i in range(DEEP_SIZE)])
+            else:
+                param_space = dict(
+                    [
+                        [
+                            f"w{i}",
+                            tune.uniform(
+                                CURRENT_BEST_DEEP_PARAMS[f"w{i}"] - epsilon,
+                                CURRENT_BEST_DEEP_PARAMS[f"w{i}"] + epsilon,
+                            ),
+                        ]
+                        for i in range(DEEP_SIZE)
+                    ]
+                )
+
+        if args.search_alg == "pdb":
             scheduler = tune.schedulers.PopulationBasedTraining(
                 time_attr="steps",
                 perturbation_interval=1,
@@ -97,37 +270,64 @@ if __name__ == "__main__":
                 },
             )
             search_alg = None
-        else:
-            scheduler = tune.schedulers.ASHAScheduler(
-                time_attr="steps", max_t=args.max_steps, grace_period=100
+        elif args.search_alg == "random":
+            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=args.max_steps, grace_period=50)
+
+            from ray.tune.search.basic_variant import BasicVariantGenerator
+
+            search_alg = BasicVariantGenerator(points_to_evaluate=best_points)
+        elif args.search_alg == "bayes":
+            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=args.max_steps, grace_period=50)
+
+            from ray.tune.search.bayesopt import BayesOptSearch
+
+            search_alg = BayesOptSearch(metric="how_far", mode="max", points_to_evaluate=best_points)
+        elif args.search_alg == "hyperopt":
+            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=args.max_steps, grace_period=50)
+
+            from ray.tune.search.hyperopt import HyperOptSearch
+
+            search_alg = HyperOptSearch(
+                metric="how_far", mode="max", n_initial_points=10, points_to_evaluate=best_points
             )
-            # from ray.tune.search.bayesopt import BayesOptSearch
+        elif args.search_alg == "hyperband":
+            scheduler = tune.schedulers.HyperBandScheduler(time_attr="steps", max_t=args.max_steps)
 
-            # search_alg = BayesOptSearch(
-            #     metric="how_far", mode="max", random_search_steps=10, points_to_evaluate=[CURRENT_BEST_SIMPLE_PARAMS]
-            # )
+            from ray.tune.search.hyperopt import HyperOptSearch
 
-            # from ray.tune.search.hyperopt import HyperOptSearch
+            search_alg = HyperOptSearch(
+                metric="how_far", mode="max", n_initial_points=10, points_to_evaluate=best_points
+            )
+        elif args.search_alg == "bohb":
+            scheduler = tune.schedulers.HyperBandForBOHB(time_attr="steps", max_t=args.max_steps)
 
-            # search_alg = tune.search.hyperopt.HyperOptSearch(metric="how_far", mode="max", n_initial_points=10, points_to_evaluate=[CURRENT_BEST_SIMPLE_PARAMS])
+            from ray.tune.search.bohb import TuneBOHB
+
+            search_alg = TuneBOHB(metric="how_far", mode="max", points_to_evaluate=best_points)
+        elif args.search_alg == "ax":
+            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=args.max_steps, grace_period=50)
+
+            from ray.tune.search.ax import AxSearch
+
+            search_alg = AxSearch(metric="how_far", mode="max", points_to_evaluate=best_points)
+
+        import datetime
 
         tuner = tune.Tuner(
-            trainable_with_resources,
-            param_space={
-                "steering_scalar": tune.randn(CURRENT_BEST_SIMPLE_PARAMS["steering_scalar"], 0.1),
-                "y_scalar": tune.randn(CURRENT_BEST_SIMPLE_PARAMS["y_scalar"], 0.1),
-                "drift_angle": tune.randn(CURRENT_BEST_SIMPLE_PARAMS["drift_angle"], 0.1),
-            },
+            tune.with_resources(trainable, {"cpu": 1, "gpu": 0}),
+            param_space=param_space,
             tune_config=tune.TuneConfig(
                 scheduler=scheduler,
-                # search_alg=search_alg,
-                max_concurrent_trials=16,
+                search_alg=search_alg,
                 mode="max",
                 metric="how_far",
-                num_samples=100,
+                num_samples=200,
                 reuse_actors=False,
             ),
-            run_config=train.RunConfig(storage_path=f"file://{log_dir}", name="tune_controller"),
+            run_config=train.RunConfig(
+                local_dir=log_dir,
+                name=f"tune_controller_{args.model}_{args.search_alg}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            ),
         )
 
         results_grid = tuner.fit()
@@ -138,7 +338,8 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--max_steps", type=int, default=1000)
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("-t", "--test_run", action="store_true")
-    parser.add_argument("--pbt", action="store_true")
+    parser.add_argument("--search_alg", default="random")
+    parser.add_argument("--model", default="simple")
     args = parser.parse_args()
     if args.test_run:
         test_controller(args)
