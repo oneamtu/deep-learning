@@ -125,7 +125,7 @@ def linear_control(aim_point: float, current_vel: float, params: dict = CURRENT_
     return action
 
 
-BRAKE_LAYERS = [(6, 3), (2, 6)]
+DRIFT_LAYERS = [(6, 3), (2, 6)]
 # how_far=0.5069099644349553
 CURRENT_BEST_DEEP_DRIFT_PARAMS = {
     "w0": 1.1516428102031477,
@@ -170,11 +170,11 @@ def deep_control_drift(aim_point: float, current_vel: float, params: dict = CURR
     action = pystk.Action()
     values = [v for v in params.values()]
 
-    linear_1 = np.matrix(values[: np.prod(LAYERS[0])]).reshape(LAYERS[0])
+    linear_1 = np.matrix(values[: np.prod(DRIFT_LAYERS[0])]).reshape(DRIFT_LAYERS[0])
     output_1 = linear_1 @ np.array([*aim_point, current_vel])
     relu_1 = np.maximum(output_1, 0)
 
-    linear_2 = np.matrix(values[np.prod(LAYERS[0]) : (np.prod(LAYERS[0]) + np.prod(LAYERS[1]))]).reshape(LAYERS[1])
+    linear_2 = np.matrix(values[np.prod(DRIFT_LAYERS[0]) : (np.prod(DRIFT_LAYERS[0]) + np.prod(DRIFT_LAYERS[1]))]).reshape(DRIFT_LAYERS[1])
     output = linear_2 @ relu_1.T
 
     action.steer = np.clip(output.item(0), -1, 1)
@@ -184,7 +184,6 @@ def deep_control_drift(aim_point: float, current_vel: float, params: dict = CURR
     return action
 
 BRAKE_LAYERS = [(6, 3), (2, 6)]
-DEEP_SIZE = np.sum([np.prod(l) for l in LAYERS]) + 1
 # how_far=0.571800059921367
 CURRENT_BEST_DEEP_BRAKE_PARAMS = {
     "w0": -1.9679861512734895,
