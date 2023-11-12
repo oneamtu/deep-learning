@@ -36,7 +36,6 @@ def simple_control(aim_point: float, current_vel: float, params: dict = CURRENT_
     y_scalar = params["y_scalar"]
     drift_angle = params["drift_angle"]
     accelerate_cutoff = params["accelerate_cutoff"]
-    brake_scalar = params["brake_scalar"]
 
     # steering the kart towards aim_point
     steering_angle = aim_point[0] * steering_scalar + aim_point[1] * y_scalar
@@ -49,8 +48,9 @@ def simple_control(aim_point: float, current_vel: float, params: dict = CURRENT_
     else:
         action.drift = False
 
-    if abs(steering_angle) + current_vel * brake_scalar > accelerate_cutoff:
+    if abs(steering_angle) > accelerate_cutoff:
         action.brake = True
+        action.acceleration = 1.0
     else:
         action.acceleration = 1.0
 
