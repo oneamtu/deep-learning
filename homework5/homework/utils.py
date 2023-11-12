@@ -117,6 +117,7 @@ class PyTux:
 
         if verbose:
             import matplotlib.pyplot as plt
+            import io
 
             fig, ax = plt.subplots(1, 1)
             frames = []
@@ -185,6 +186,7 @@ class PyTux:
                     {"steps": t, "how_far": kart.overall_distance / track.length, "rescue_count": rescue_count}
                 )
                 if verbose:
+                    print(f"Last action: A: {action.accelerate}, B: {action.brake}, D: {action.drift}, S: {action.steer}")
                     print({"steps": t, "how_far": kart.overall_distance / track.length, "rescue_count": rescue_count})
 
         if verbose:
