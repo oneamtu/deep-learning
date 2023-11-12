@@ -9,7 +9,7 @@ import pystk
 RESCUE_TIMEOUT = 30
 TRACK_OFFSET = 15
 
-pystk_config = pystk.GraphicsConfig.none()
+pystk_config = pystk.GraphicsConfig.hd()
 pystk_config.screen_width = 128
 pystk_config.screen_height = 96
 
@@ -18,6 +18,7 @@ pystk.init(pystk_config)
 
 class PySTKGrader(Grader):
     use_planner = False
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.C = self.module.control
@@ -31,8 +32,9 @@ class PySTKGrader(Grader):
         Get a point at `distance` down the `track`. Optionally applies an offset after the track segment if found.
         Returns a 3d coordinate
         """
-        node_idx = np.searchsorted(track.path_distance[..., 1],
-                                   distance % track.path_distance[-1, 1]) % len(track.path_nodes)
+        node_idx = np.searchsorted(track.path_distance[..., 1], distance % track.path_distance[-1, 1]) % len(
+            track.path_nodes
+        )
         d = track.path_distance[node_idx]
         x = track.path_nodes[node_idx]
         t = (distance + offset - d[0]) / (d[1] - d[0])
@@ -72,12 +74,12 @@ class PySTKGrader(Grader):
                 if self.P is None:
                     proj = np.array(state.players[0].camera.projection).T
                     view = np.array(state.players[0].camera.view).T
-                    aim_point_world = self._point_on_track(kart.distance_down_track+TRACK_OFFSET, track)
+                    aim_point_world = self._point_on_track(kart.distance_down_track + TRACK_OFFSET, track)
                     aim_point_image = self._to_image(aim_point_world, proj, view)
                 else:
                     image = np.array(k.render_data[0].image)
                     aim_point_image = self.P(TF.to_tensor(image)[None]).squeeze(0).cpu().detach().numpy()
-                
+
                 current_vel = np.linalg.norm(kart.velocity)
                 action = self.C(aim_point_image, current_vel)
 
@@ -91,85 +93,88 @@ class PySTKGrader(Grader):
             k.stop()
             del k
         if kart.race_result:
-            return 1, '%0.1f s' % kart.finish_time
-        return kart.overall_distance / track.length, '%0.1f%% done' % (100 * kart.overall_distance / track.length)
+            return 1, "%0.1f s" % kart.finish_time
+        return kart.overall_distance / track.length, "%0.1f%% done" % (100 * kart.overall_distance / track.length)
 
 
 class ControllerGrader(PySTKGrader, Grader):
     """Controller"""
+
     use_planner = False
-    
+
     @Case(score=5)
     def test_lighthouse(self):
         """lighthouse"""
-        return self._test('lighthouse', 550)
+        return self._test("lighthouse", 550)
 
     @Case(score=5)
     def test_hacienda(self):
         """hacienda"""
-        return self._test('hacienda', 700)
+        return self._test("hacienda", 700)
 
     @Case(score=5)
     def test_snowtuxpeak(self):
         """snowtuxpeak"""
-        return self._test('snowtuxpeak', 700)
+        return self._test("snowtuxpeak", 700)
 
     @Case(score=5)
     def test_zengarden(self):
         """zengarden"""
-        return self._test('zengarden', 600)
+        return self._test("zengarden", 600)
 
     @Case(score=5)
     def test_cornfield_crossing(self):
         """cornfield_crossing"""
-        return self._test('cornfield_crossing', 750)
+        return self._test("cornfield_crossing", 750)
 
     @Case(score=5)
     def test_scotland(self):
         """scotland"""
-        return self._test('scotland', 700)
+        return self._test("scotland", 700)
 
 
 class PlannerGrader(PySTKGrader, Grader):
     """Planner"""
+
     use_planner = True
 
     @Case(score=10)
     def test_lighthouse(self, it=0):
         """lighthouse"""
-        return self._test('lighthouse', 650)
+        return self._test("lighthouse", 650)
 
     @Case(score=10)
     def test_hacienda(self, it=0):
         """hacienda"""
-        return self._test('hacienda', 700)
+        return self._test("hacienda", 700)
 
     @Case(score=10)
     def test_snowtuxpeak(self, it=0):
         """snowtuxpeak"""
-        return self._test('snowtuxpeak', 700)
+        return self._test("snowtuxpeak", 700)
 
     @Case(score=10)
     def test_zengarden(self, it=0):
         """zengarden"""
-        return self._test('zengarden', 700)
+        return self._test("zengarden", 700)
 
     @Case(score=10)
     def test_cornfield_crossing(self, it=0):
         """cornfield_crossing"""
-        return self._test('cornfield_crossing', 950)
+        return self._test("cornfield_crossing", 950)
 
     @Case(score=10)
     def test_scotland(self, it=0):
         """scotland"""
-        return self._test('scotland', 850)
+        return self._test("scotland", 850)
 
 
 class NewLevelrGrader(PySTKGrader, Grader):
     """Test level"""
+
     use_planner = True
 
     @Case(score=10)
     def test_cocoa_temple(self, it=0):
         """cocoa temple"""
-        return self._test('cocoa_temple', 800)
+        return self._test("cocoa_temple", 800)
