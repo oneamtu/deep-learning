@@ -26,9 +26,12 @@ def control(aim_point: float, current_vel: float, control_type: str = "deep", pa
     return f(aim_point, current_vel) if params is None else f(aim_point, current_vel, params=params)
 
 
-CURRENT_BEST_SIMPLE_PARAMS = dict(
-    steering_scalar=0.3237, y_scalar=-0.0248, drift_angle=0.8783, accelerate_cutoff=0.8570
-)
+CURRENT_BEST_SIMPLE_PARAMS = {
+    "steering_scalar": 2.5232161324474416,
+    "y_scalar": 0.7012489595655415,
+    "drift_angle": 0.9220483178471008,
+    "accelerate_cutoff": 0.5045246985540843,
+}
 
 
 # 8/100
