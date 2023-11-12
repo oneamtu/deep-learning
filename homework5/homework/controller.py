@@ -321,7 +321,10 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
 
     def test_controller(args):
-        pytux = PyTux(graphics=args.graphics)
+        if PyTux._singleton is None:
+            pytux = PyTux(graphics=args.graphics)
+        else:
+            pytux = PyTux._singleton
 
         from functools import partial
 
@@ -345,7 +348,11 @@ if __name__ == "__main__":
         print(f"DASHBOARD URL: {context.dashboard_url}")
 
         def trainable(params):
-            pytux = PyTux(graphics=False)
+            if PyTux._singleton is None:
+                pytux = PyTux(graphics=args.graphics)
+            else:
+                pytux = PyTux._singleton
+
             from functools import partial
 
             parameterized_control = partial(control, params=params, control_type=args.model)
