@@ -185,9 +185,9 @@ class PyTux:
                 train.report(
                     {"steps": t, "how_far": kart.overall_distance / track.length, "rescue_count": rescue_count}
                 )
-                if verbose:
-                    print(f"Last action: A: {action.accelerate}, B: {action.brake}, D: {action.drift}, S: {action.steer}")
-                    print({"steps": t, "how_far": kart.overall_distance / track.length, "rescue_count": rescue_count})
+            if verbose:
+                print(f"Last action: A: {action.accelerate}, B: {action.brake}, D: {action.drift}, S: {action.steer}")
+                print({"steps": t, "how_far": kart.overall_distance / track.length, "rescue_count": rescue_count})
 
         if verbose:
             import imageio
