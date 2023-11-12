@@ -7,7 +7,7 @@ import datetime
 # deep control 2 -- policy gradient
 
 
-def control(aim_point: float, current_vel: float, control_type: str = "deep", params=None) -> pystk.Action:
+def control(aim_point: float, current_vel: float, control_type: str = "simple", params=None) -> pystk.Action:
     from functools import partial
 
     if control_type == "simple":
