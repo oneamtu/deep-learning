@@ -25,10 +25,7 @@ class SuperTuxDataset(Dataset):
             count += 1
             i = Image.open(f.replace(".csv", ".png"))
             i.load()
-            # TODO: filter upstream
-            coords = np.loadtxt(f, dtype=np.float32, delimiter=",")
-            if coords[0] < -1 or coords[0] > 1 or coords[1] < -1 or coords[1] > 1:
-                continue
+            coords = np.clip(np.loadtxt(f, dtype=np.float32, delimiter=","), -1, 1)
             self.data.append((i, coords))
         print(f"{dataset_path} : {len(self.data)} valid points/{count} total")
         self.transform = transform
