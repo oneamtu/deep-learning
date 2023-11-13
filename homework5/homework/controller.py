@@ -522,19 +522,19 @@ if __name__ == "__main__":
             )
             search_alg = None
         elif args.search_alg == "random":
-            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=args.max_steps, grace_period=50)
+            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=10*args.max_steps, grace_period=50)
 
             from ray.tune.search.basic_variant import BasicVariantGenerator
 
             search_alg = BasicVariantGenerator(points_to_evaluate=best_points)
         elif args.search_alg == "bayes":
-            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=args.max_steps, grace_period=50)
+            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=10*args.max_steps, grace_period=50)
 
             from ray.tune.search.bayesopt import BayesOptSearch
 
             search_alg = BayesOptSearch(metric="how_far", mode="max", points_to_evaluate=best_points)
         elif args.search_alg == "hyperopt":
-            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=args.max_steps, grace_period=50)
+            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=10*args.max_steps, grace_period=50)
 
             from ray.tune.search.hyperopt import HyperOptSearch
 
@@ -556,7 +556,7 @@ if __name__ == "__main__":
 
             search_alg = TuneBOHB(metric="how_far", mode="max", points_to_evaluate=best_points)
         elif args.search_alg == "ax":
-            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=args.max_steps, grace_period=50)
+            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=10*args.max_steps, grace_period=50)
 
             from ray.tune.search.ax import AxSearch
 
