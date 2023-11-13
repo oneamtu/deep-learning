@@ -423,6 +423,7 @@ if __name__ == "__main__":
                             "rescue_count": rescue_count + total_rescue_count,
                         }
                     )
+                    print(f"{how_far + total_how_far} in {steps + total_steps} steps; {rescue_count} rescues")
 
             for t in args.track:
                 steps, how_far, rescue_count = pytux.rollout(
@@ -437,6 +438,7 @@ if __name__ == "__main__":
                 total_steps += steps
                 total_how_far += how_far
                 total_rescue_count += rescue_count
+                print(f"Starting track {t}")
 
             PyTux._singleton = None
             pytux.close()
