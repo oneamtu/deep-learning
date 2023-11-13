@@ -6,6 +6,8 @@ import datetime
 # nitro?
 # simple control 2
 # deep control 2 -- policy gradient
+# DQNs
+# tune callback
 
 
 def control(aim_point: float, current_vel: float, control_type: str = "simple", params=None) -> pystk.Action:

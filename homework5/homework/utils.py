@@ -9,7 +9,7 @@ from . import dense_transforms
 
 RESCUE_TIMEOUT = 30
 TRACK_OFFSET = 15
-DATASET_PATH = "drive_data"
+DATASET_PATH = "drive_data/train"
 
 
 class SuperTuxDataset(Dataset):
@@ -37,6 +37,26 @@ class SuperTuxDataset(Dataset):
 def load_data(dataset_path=DATASET_PATH, transform=dense_transforms.ToTensor(), num_workers=0, batch_size=128):
     dataset = SuperTuxDataset(dataset_path, transform=transform)
     return DataLoader(dataset, num_workers=num_workers, batch_size=batch_size, shuffle=True, drop_last=True)
+
+
+def split_data_files(dataset_path=DATASET_PATH, perc=0.2):
+    import os
+    import random
+    import shutil
+
+    files = os.listdir(dataset_path)
+    files = [f for f in files if f.endswith(".png")]
+
+    random.shuffle(files)
+    slice_point = int(len(files) * perc)
+
+    valid_dir = "drive_data/valid"
+    if not os.path.exists(valid_dir):
+        os.makedirs(valid_dir)
+
+    for f in files[:slice_point]:
+        shutil.move(os.path.join(dataset_path, f), valid_dir)
+        shutil.move(os.path.join(dataset_path, f.replace(".png", ".csv")), valid_dir)
 
 
 class PyTux:
