@@ -18,6 +18,8 @@ def control(aim_point: float, current_vel: float, control_type: str = "simple", 
 
     if control_type == "simple":
         f = simple_control
+    if control_type == "simple_2":
+        f = simple_control_2
     elif control_type == "linear":
         f = linear_control
     elif control_type == "deep":
@@ -74,8 +76,14 @@ def simple_control(aim_point: float, current_vel: float, params: dict = CURRENT_
 
     return action
 
+SIMPLE_SIZE = 4
+CURRENT_BEST_SIMPLE_2_PARAMS = {
+    "drift_cutoff": 0.9220483178471008,
+    "brake_cutoff": 0.5045246985540843,
+}
 
-def simple_control_2(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_SIMPLE_PARAMS) -> pystk.Action:
+
+def simple_control_2(aim_point: float, current_vel: float, params: dict = CURRENT_BEST_SIMPLE_2_PARAMS) -> pystk.Action:
     """
     Set the Action for the low-level controller
     :param aim_point: Aim point, in screen coordinate frame [-1..1]
@@ -84,29 +92,31 @@ def simple_control_2(aim_point: float, current_vel: float, params: dict = CURREN
     """
 
     action = pystk.Action()
-    steering_scalar = params["steering_scalar"]
-    y_scalar = params["y_scalar"]
-    drift_angle = params["drift_angle"]
-    accelerate_cutoff = params["accelerate_cutoff"]
+    aim_steering = params["aim_steering"]
+    vel_steering = params["vel_steering"]
+    drift_cutoff = params["drift_cutoff"]
+    brake_cutoff = params["brake_cutoff"]
+    vel_max = params["vel_max"]
+
+    aim_angle = np.arctan2(aim_point[1], aim_point[0])
+    current_vel_n = current_vel / 30.
 
     # steering the kart towards aim_point
-    steering_angle = (
-        steering_scalar * np.atan2(aim_point[0] / aim_point[1]) * np.sqrt(aim_point[0] ** 2 + aim_point[1] ** 2)
-    )
+    steering_angle = aim_angle * aim_steering + np.sign(aim_angle) * vel_steering * current_vel_n
+
+    steer_abs = abs(steering_angle)
 
     action.steer = np.clip(steering_angle, -1, 1)
+    action.drift = steer_abs > drift_cutoff
+    action.brake = steer_abs > brake_cutoff
+    # action.acceleration = 1.0 - (current_vel_n * vel_acceleration + steer_abs * steer_acceleration)
 
-    # enabling drift for wide turns
-    if abs(steering_angle) > drift_angle:
-        action.drift = True
-    else:
-        action.drift = False
-
-    if abs(steering_angle) > accelerate_cutoff:
-        action.brake = True
+    if current_vel < vel_max:
         action.acceleration = 1.0
     else:
-        action.acceleration = 1.0
+        action.acceleration = 0.0
+    
+    action.nitro = steer_abs < 0.1
 
     return action
 
@@ -434,6 +444,15 @@ if __name__ == "__main__":
                 "y_scalar": tune.uniform(0.0, 1.0),
                 "drift_angle": tune.uniform(0.5, 1.0),
                 "accelerate_cutoff": tune.uniform(0.5, 1.0),
+            }
+        if args.model == "simple_2":
+            best_points = [CURRENT_BEST_SIMPLE_2_PARAMS]
+            param_space = {
+                "aim_steering": tune.uniform(0.0, 3.0),
+                "vel_steering": tune.uniform(0.0, 1.0),
+                "drift_cutoff": tune.uniform(0.5, 1.0),
+                "brake_cutoff": tune.uniform(0.2, 1.0),
+                "vel_max": tune.uniform(10., 25.),
             }
         elif args.model == "linear":
             best_points = [CURRENT_BEST_LINEAR_PARAMS]
