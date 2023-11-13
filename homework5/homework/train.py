@@ -108,7 +108,7 @@ def train(args):
                 break
 
             with torch.no_grad():
-                valid_images = valid_images.to(device)
+                valid_images, valid_labels = valid_images.to(device), valid_labels.to(device)
                 predicted_labels = model(valid_images)
 
                 valid_accuracy += torch.sum(
