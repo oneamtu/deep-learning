@@ -76,6 +76,7 @@ def simple_control(aim_point: float, current_vel: float, params: dict = CURRENT_
 
     return action
 
+
 SIMPLE_SIZE = 4
 CURRENT_BEST_SIMPLE_2_PARAMS = {
     "drift_cutoff": 0.9220483178471008,
@@ -99,7 +100,7 @@ def simple_control_2(aim_point: float, current_vel: float, params: dict = CURREN
     vel_max = params["vel_max"]
 
     aim_angle = np.arctan2(aim_point[1], aim_point[0])
-    current_vel_n = current_vel / 30.
+    current_vel_n = current_vel / 30.0
 
     # steering the kart towards aim_point
     steering_angle = aim_angle * aim_steering + np.sign(aim_angle) * vel_steering * current_vel_n
@@ -115,7 +116,7 @@ def simple_control_2(aim_point: float, current_vel: float, params: dict = CURREN
         action.acceleration = 1.0
     else:
         action.acceleration = 0.0
-    
+
     action.nitro = steer_abs < 0.1
 
     return action
@@ -410,22 +411,36 @@ if __name__ == "__main__":
             else:
                 planner = None
 
-            # TODO: how to track multiple tracks
+            def train_callback(steps, how_far, rescue_count):
+                if steps % 10 == 0:
+                    train.report(
+                        {
+                            "steps": steps + total_steps,
+                            "how_far": how_far + total_how_far,
+                            "rescue_count": rescue_count + total_rescue_count,
+                        }
+                    )
+
+            total_steps, total_how_far, total_rescue_count = 0, 0.0, 0
+
             for t in args.track:
                 steps, how_far, rescue_count = pytux.rollout(
                     t,
                     parameterized_control,
                     max_frames=args.max_steps,
                     verbose=args.verbose,
-                    train=train,
+                    train_callback=train_callback,
                     break_on_rescue=True,
                     planner=planner,
                 )
+                total_steps += steps
+                total_how_far += how_far
+                total_rescue_count += rescue_count
 
             PyTux._singleton = None
             pytux.close()
             del pytux
-            return {"steps": steps, "how_far": how_far, "rescue_count": rescue_count}
+            return {"steps": total_steps, "how_far": total_how_far, "rescue_count": total_rescue_count}
 
         import os
 
@@ -452,7 +467,7 @@ if __name__ == "__main__":
                 "vel_steering": tune.uniform(0.0, 1.0),
                 "drift_cutoff": tune.uniform(0.5, 1.0),
                 "brake_cutoff": tune.uniform(0.2, 1.0),
-                "vel_max": tune.uniform(10., 25.),
+                "vel_max": tune.uniform(10.0, 25.0),
             }
         elif args.model == "linear":
             best_points = [CURRENT_BEST_LINEAR_PARAMS]

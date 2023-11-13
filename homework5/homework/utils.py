@@ -113,7 +113,7 @@ class PyTux:
         max_frames=1000,
         verbose=False,
         data_callback=None,
-        train=None,
+        train_callback=None,
         break_on_rescue=False,
         filename="test.mp4",
     ):
@@ -234,10 +234,8 @@ class PyTux:
 
                 frames.append(im)
 
-            if train is not None and t % 10 == 0:
-                train.report(
-                    {"steps": t, "how_far": how_far, "rescue_count": rescue_count}
-                )
+            if train_callback is not None:
+                train_callback(t, how_far, rescue_count)
             if t % 100 == 0:
                 text = "\n".join(
                     (
