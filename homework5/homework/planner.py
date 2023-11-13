@@ -157,10 +157,14 @@ def load_model(filename="planner.th"):
     print(f"Loading model {filename}!")
 
     state_dict = load(path.join(path.dirname(path.abspath(__file__)), filename), map_location="cpu")
-    new_state_dict = {k: v for k, v in state_dict.items() if "classifier" not in k}
-
     r = Planner()
-    r.load_state_dict(new_state_dict, strict=False)
+
+    if "det.th" in filename:
+        new_state_dict = {k: v for k, v in state_dict.items() if "classifier" not in k}
+        r.load_state_dict(new_state_dict, strict=False)
+    else:
+        r.load_state_dict(state_dict)
+
     return r
 
 
