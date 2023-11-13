@@ -2,7 +2,7 @@ import pystk
 import numpy as np
 import datetime
 
-from planner import load_model
+from .planner import load_model
 
 # vision
 # nitro?
