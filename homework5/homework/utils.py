@@ -228,7 +228,7 @@ class PyTux:
             t += 1
             how_far = kart.overall_distance / track.length
 
-            if steps < 100 and how_far > 0.8:
+            if t < 100 and how_far > 0.8:
                 how_far = 0
 
             if train is not None and t % 10 == 0:
