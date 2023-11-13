@@ -154,6 +154,8 @@ def load_model(filename="planner.th"):
     from torch import load
     from os import path
 
+    print(f"Loading model {filename}!")
+
     state_dict = load(path.join(path.dirname(path.abspath(__file__)), filename), map_location="cpu")
     new_state_dict = {k: v for k, v in state_dict.items() if "classifier" not in k}
 

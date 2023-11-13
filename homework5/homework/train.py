@@ -69,11 +69,7 @@ def train(args):
             predicted_heatmaps = model.heatmap(train_images)
             predicted_labels = spatial_argmax(predicted_heatmaps)
 
-            import pdb
-
-            pdb.set_trace()
-
-            loss = torch.nn.MSELoss().forward(predicted_labels, train_labels)
+            loss = torch.nn.L1Loss().forward(predicted_labels, train_labels)
 
             global_step = epoch * len(training_data) + i
             train_logger.add_scalars(
@@ -118,7 +114,7 @@ def train(args):
                 predicted_labels = model(valid_images)
 
                 valid_accuracy += torch.sum(
-                    torch.pairwise_distance(predicted_labels, valid_labels) < 5e-2
+                    torch.nn.MSELoss(reduction='none')(predicted_labels, valid_labels) < 25e-4
                 ).cpu().detach().item() / len(valid_labels)
 
                 if i < 5:

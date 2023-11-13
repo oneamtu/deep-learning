@@ -150,6 +150,8 @@ class PyTux:
 
         last_rescue = 0
         rescue_count = 0
+        dist = 0.
+        total_accuracy = 0
 
         if verbose:
             import matplotlib.pyplot as plt
@@ -179,7 +181,10 @@ class PyTux:
 
             if planner:
                 image = np.array(self.k.render_data[0].image)
+                gt_aim_point_image = aim_point_image
                 aim_point_image = planner(TF.to_tensor(image)[None]).squeeze(0).cpu().detach().numpy()
+                dist = np.linalg.norm(aim_point_image - gt_aim_point_image)
+                total_accuracy += dist < 5e-2
 
             current_vel = np.linalg.norm(kart.velocity)
             action = controller(aim_point_image, current_vel)
@@ -211,6 +216,7 @@ class PyTux:
                         f"Im Points: X: {aim_point_image[0]:.4f}, Y: {aim_point_image[1]:.4f}, Vel: {current_vel:.4f}",
                         f"Last action: A: {action.acceleration:.4f}, B: {action.brake}, D: {action.drift}, S: {action.steer:.4f}",
                         f"steps: {t}, how_far: {kart.overall_distance / track.length:.4f}, rescue_count: {rescue_count}",
+                        f"accuracy: {dist}, total accuracy; {total_accuracy / t:.2f}",
                     )
                 )
                 ax.text(0.5, 0.5, text, alpha=0.8, verticalalignment="top")

@@ -5,6 +5,7 @@ import datetime
 from .planner import load_model
 
 # vision
+# update stats
 # nitro?
 # simple control 2
 # deep control 2 -- policy gradient
@@ -112,12 +113,12 @@ def simple_control_2(aim_point: float, current_vel: float, params: dict = CURREN
 
 LINEAR_SIZE = (2, 3)
 CURRENT_BEST_LINEAR_PARAMS = {
-    "w0": -2.8160011091392554,
-    "w1": 0.2512532117224574,
-    "w2": 0.18879930520217497,
-    "w3": 1.4292673039888695,
-    "w4": -0.26967411554419424,
-    "w5": 0.9915393249773421,
+    "w0": 1.1689493979701004,
+    "w1": -0.32592878018870886,
+    "w2": -0.1681750191262573,
+    "w3": -1.0557620970444317,
+    "w4": -0.028418626212363848,
+    "w5": -0.703920327286141,
 }
 
 
