@@ -69,16 +69,16 @@ def simple_control(aim_point: float, current_vel: float, params: dict = CURRENT_
 
     if abs(steering_angle) > accelerate_cutoff:
         action.brake = True
-        action.acceleration = 1.0
-    else:
-        action.acceleration = 1.0
+
+    action.acceleration = 1.0
+    action.nitro = abs(steering_angle) < 0.1
 
     return action
 
 
 SIMPLE_SIZE = 4
 CURRENT_BEST_SIMPLE_2_PARAMS = {
-    "aim_steering": 0.21101163039466375,
+    "steering_scalar": 2.5232161324474416,
     "vel_steering": 0.521437424136858,
     "drift_cutoff": 0.5474835823774674,
     "brake_cutoff": 0.49755886788365955,
