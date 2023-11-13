@@ -226,7 +226,7 @@ class PyTux:
                         f"accuracy: {dist}, total accuracy; {(total_accuracy / t):.2f}",
                     )
                 )
-                ax.text(0.5, 0.5, text, alpha=0.8, verticalalignment="top")
+                ax.text(0.5, 0.5, text, alpha=0.8, verticalalignment="top", color="white")
 
                 with io.BytesIO() as buff:
                     fig.savefig(buff, format="raw")
@@ -241,12 +241,13 @@ class PyTux:
                 train.report(
                     {"steps": t, "how_far": how_far, "rescue_count": rescue_count}
                 )
-            if False:
+            if t % 100 == 0:
                 text = "\n".join(
                     (
                         f"Im Points: X: {aim_point_image[0]:.4f}, Y: {aim_point_image[1]:.4f}, Vel: {current_vel:.4f}",
                         f"Last action: A: {action.acceleration:.4f}, B: {action.brake}, D: {action.drift}, S: {action.steer:.4f}",
-                        f"steps: {t}, how_far: {kart.overall_distance / track.length:.4f}, rescue_count: {rescue_count}",
+                        f"steps: {t}, how_far: {how_far:.4f}, rescue_count: {rescue_count}",
+                        f"accuracy: {dist}, total accuracy; {(total_accuracy / t):.2f}",
                     )
                 )
                 print(text)
