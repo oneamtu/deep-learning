@@ -20,10 +20,17 @@ class SuperTuxDataset(Dataset):
         from os import path
 
         self.data = []
+        count = 0
         for f in glob(path.join(dataset_path, "*.csv")):
+            count += 1
             i = Image.open(f.replace(".csv", ".png"))
             i.load()
-            self.data.append((i, np.loadtxt(f, dtype=np.float32, delimiter=",")))
+            # TODO: filter upstream
+            coords = np.loadtxt(f, dtype=np.float32, delimiter=",")
+            if coords[0] < -1 or coords[0] > 1 or coords[1] < -1 or coords[1] > 1:
+                continue
+            self.data.append((i, coords))
+        print(f"{dataset_path} : {len(self.data)} valid points/{count} total")
         self.transform = transform
 
     def __len__(self):
