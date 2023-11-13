@@ -63,8 +63,8 @@ def split_data_files(dataset_path=DATASET_PATH, perc=0.2):
     os.makedirs(valid_dir)
 
     for f in files[:slice_point]:
-        shutil.move(os.path.join(dataset_path, f), valid_dir)
-        shutil.move(os.path.join(dataset_path, f.replace(".png", ".csv")), valid_dir)
+        shutil.move(os.path.join(train_dir, f), valid_dir)
+        shutil.move(os.path.join(train_dir, f.replace(".png", ".csv")), valid_dir)
 
 
 class PyTux:
