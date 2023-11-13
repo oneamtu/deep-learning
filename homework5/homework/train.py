@@ -113,9 +113,14 @@ def train(args):
                 valid_images, valid_labels = valid_images.to(device), valid_labels.to(device)
                 predicted_labels = model(valid_images)
 
-                valid_accuracy += torch.sum(
+                accuracy = torch.sum(
                     torch.nn.MSELoss(reduction='none')(predicted_labels, valid_labels) < 25e-4
-                ).cpu().detach().item() / len(valid_labels)
+                ).cpu().detach().item() / 2*len(valid_labels)
+
+                if accuracy > 1.:
+                    import pdb
+                    pdb.set_trace()
+                valid_accuracy += accuracy
 
                 if i < 5:
                     log(

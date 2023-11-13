@@ -357,12 +357,18 @@ if __name__ == "__main__":
 
         parameterized_control = partial(control, control_type=args.model)
 
+        if args.planner:
+            planner = load_model().eval()
+        else:
+            planner = None
+
         for t in args.track:
             steps, how_far, rescue_count = pytux.rollout(
                 t,
                 parameterized_control,
                 max_frames=args.max_steps,
                 verbose=args.verbose,
+                planner=planner,
                 filename=f"test_{args.model}_{'_'.join(args.track)}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4",
             )
             print(f"{args.track}: {how_far} in {steps} steps; {rescue_count} rescues")
