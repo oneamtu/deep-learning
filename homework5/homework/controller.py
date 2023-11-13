@@ -52,7 +52,7 @@ def simple_control(aim_point: float, current_vel: float, params: dict = CURRENT_
 
     action = pystk.Action()
     steering_scalar = params["steering_scalar"]
-    y_scalar = 0.
+    y_scalar = 0.0
     drift_angle = params["drift_angle"]
     accelerate_cutoff = params["accelerate_cutoff"]
 
@@ -78,11 +78,11 @@ def simple_control(aim_point: float, current_vel: float, params: dict = CURRENT_
 
 SIMPLE_SIZE = 4
 CURRENT_BEST_SIMPLE_2_PARAMS = {
-    "aim_steering": 2.5232161324474416,
-    "vel_steering": 0.521437424136858,
-    "drift_cutoff": 0.5474835823774674,
-    "brake_cutoff": 0.49755886788365955,
-    "vel_max": 19.620181982924144,
+    "aim_steering": 2.2150826050618075,
+    "vel_steering": 0.8380516171173772,
+    "drift_cutoff": 0.8621519983696911,
+    "brake_cutoff": 0.9461188955414697,
+    "vel_max": 22.462077434700024,
 }
 
 
