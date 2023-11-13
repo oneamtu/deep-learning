@@ -52,7 +52,7 @@ def simple_control(aim_point: float, current_vel: float, params: dict = CURRENT_
 
     action = pystk.Action()
     steering_scalar = params["steering_scalar"]
-    y_scalar = params["y_scalar"]
+    y_scalar = 0.
     drift_angle = params["drift_angle"]
     accelerate_cutoff = params["accelerate_cutoff"]
 
@@ -101,11 +101,10 @@ def simple_control_2(aim_point: float, current_vel: float, params: dict = CURREN
     brake_cutoff = params["brake_cutoff"]
     vel_max = params["vel_max"]
 
-    aim_angle = np.arctan2(aim_point[1], aim_point[0])
     current_vel_n = current_vel / 30.0
 
     # steering the kart towards aim_point
-    steering_angle = aim_angle * aim_steering + np.sign(aim_angle) * vel_steering * current_vel_n
+    steering_angle = aim_point[0] * aim_steering + np.sign(aim_point[0]) * vel_steering * current_vel_n
 
     steer_abs = abs(steering_angle)
 
