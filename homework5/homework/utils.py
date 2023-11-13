@@ -9,11 +9,12 @@ from . import dense_transforms
 
 RESCUE_TIMEOUT = 30
 TRACK_OFFSET = 15
-DATASET_PATH = "drive_data/train"
+DATASET_PATH = "drive_data"
+TRAIN_DATASET_PATH = f"{DATASET_PATH}/train"
 
 
 class SuperTuxDataset(Dataset):
-    def __init__(self, dataset_path=DATASET_PATH, transform=dense_transforms.ToTensor()):
+    def __init__(self, dataset_path=TRAIN_DATASET_PATH, transform=dense_transforms.ToTensor()):
         from PIL import Image
         from glob import glob
         from os import path
@@ -34,7 +35,7 @@ class SuperTuxDataset(Dataset):
         return data
 
 
-def load_data(dataset_path=DATASET_PATH, transform=dense_transforms.ToTensor(), num_workers=0, batch_size=128):
+def load_data(dataset_path=TRAIN_DATASET_PATH, transform=dense_transforms.ToTensor(), num_workers=0, batch_size=128):
     dataset = SuperTuxDataset(dataset_path, transform=transform)
     return DataLoader(dataset, num_workers=num_workers, batch_size=batch_size, shuffle=True, drop_last=True)
 
@@ -44,7 +45,11 @@ def split_data_files(dataset_path=DATASET_PATH, perc=0.2):
     import random
     import shutil
 
-    files = os.listdir(dataset_path)
+    train_path = os.path.join(dataset_path, "train")
+    if not os.path.exists(train_path):
+        [shutil.move(file_path, train_path) for file_path in os.listdir(dataset_path)]
+
+    files = os.listdir(train_path)
     files = [f for f in files if f.endswith(".png")]
 
     random.shuffle(files)
