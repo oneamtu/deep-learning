@@ -18,7 +18,7 @@ def control(aim_point: float, current_vel: float, control_type: str = "simple", 
 
     if control_type == "simple":
         f = simple_control
-    if control_type == "simple_2":
+    elif control_type == "simple_2":
         f = simple_control_2
     elif control_type == "linear":
         f = linear_control
