@@ -115,7 +115,7 @@ def train(args):
 
                 accuracy = torch.sum(
                     torch.nn.MSELoss(reduction='none')(predicted_labels, valid_labels) < 25e-4
-                ).cpu().detach().item() / 2*len(valid_labels)
+                ).cpu().detach().item() / (2*len(valid_labels))
                 valid_accuracy += accuracy
 
                 if i < 5:
