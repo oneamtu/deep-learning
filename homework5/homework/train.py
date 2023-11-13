@@ -178,7 +178,7 @@ def log(logger, img, label, pred, global_step, pred_peaks=None):
         return
 
     def hm_to_image(hm):
-        clip = torch.clip(hm, 0.0, 1.0)
+        clip = torch.nn.functional.softmax(hm)
         return torch.stack((clip, clip, clip), dim=0)
 
     images = [
