@@ -45,19 +45,21 @@ def split_data_files(dataset_path=DATASET_PATH, perc=0.2):
     import random
     import shutil
 
-    train_path = os.path.join(dataset_path, "train")
-    if not os.path.exists(train_path):
-        [shutil.move(file_path, train_path) for file_path in os.listdir(dataset_path)]
+    train_dir = os.path.join(dataset_path, "train")
+    if not os.path.exists(train_dir):
+        [shutil.move(os.path.join(dataset_path, file_path), train_dir) for file_path in os.listdir(dataset_path)]
 
-    files = os.listdir(train_path)
+    files = os.listdir(train_dir)
     files = [f for f in files if f.endswith(".png")]
 
     random.shuffle(files)
     slice_point = int(len(files) * perc)
 
     valid_dir = "drive_data/valid"
-    if not os.path.exists(valid_dir):
-        os.makedirs(valid_dir)
+    if os.path.exists(valid_dir):
+        return
+
+    os.makedirs(valid_dir)
 
     for f in files[:slice_point]:
         shutil.move(os.path.join(dataset_path, f), valid_dir)
