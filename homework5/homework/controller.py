@@ -13,7 +13,7 @@ from .planner import load_model
 # tune callback
 
 
-def control(aim_point: float, current_vel: float, control_type: str = "simple", params=None) -> pystk.Action:
+def control(aim_point: float, current_vel: float, control_type: str = "simple_2", params=None) -> pystk.Action:
     from functools import partial
 
     if control_type == "simple":
@@ -412,6 +412,8 @@ if __name__ == "__main__":
             else:
                 planner = None
 
+            total_steps, total_how_far, total_rescue_count = 0, 0.0, 0
+
             def train_callback(steps, how_far, rescue_count):
                 if steps % 10 == 0:
                     train.report(
@@ -421,8 +423,6 @@ if __name__ == "__main__":
                             "rescue_count": rescue_count + total_rescue_count,
                         }
                     )
-
-            total_steps, total_how_far, total_rescue_count = 0, 0.0, 0
 
             for t in args.track:
                 steps, how_far, rescue_count = pytux.rollout(
