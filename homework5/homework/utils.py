@@ -47,6 +47,7 @@ def split_data_files(dataset_path=DATASET_PATH, perc=0.2):
 
     train_dir = os.path.join(dataset_path, "train")
     if not os.path.exists(train_dir):
+        os.makedirs(train_dir)
         [shutil.move(os.path.join(dataset_path, file_path), train_dir) for file_path in os.listdir(dataset_path)]
 
     files = os.listdir(train_dir)

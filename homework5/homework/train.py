@@ -190,9 +190,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--log_dir", default="log")
-    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--epochs", type=int, default=100)
-    parser.add_argument("--patience", type=int, default=5)
+    parser.add_argument("--patience", type=int, default=15)
     parser.add_argument("--weight_decay", type=float, default=0.0)
     parser.add_argument("--intense_augment", type=bool, default=True)
     parser.add_argument("--test_run", type=bool, default=False)
