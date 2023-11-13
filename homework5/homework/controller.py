@@ -78,7 +78,7 @@ def simple_control(aim_point: float, current_vel: float, params: dict = CURRENT_
 
 SIMPLE_SIZE = 4
 CURRENT_BEST_SIMPLE_2_PARAMS = {
-    "steering_scalar": 2.5232161324474416,
+    "aim_steering": 2.5232161324474416,
     "vel_steering": 0.521437424136858,
     "drift_cutoff": 0.5474835823774674,
     "brake_cutoff": 0.49755886788365955,
