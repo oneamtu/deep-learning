@@ -36,7 +36,6 @@ def control(aim_point: float, current_vel: float, control_type: str = "simple", 
 
 CURRENT_BEST_SIMPLE_PARAMS = {
     "steering_scalar": 2.5232161324474416,
-    "y_scalar": 0.7012489595655415,
     "drift_angle": 0.9220483178471008,
     "accelerate_cutoff": 0.5045246985540843,
 }
@@ -58,7 +57,7 @@ def simple_control(aim_point: float, current_vel: float, params: dict = CURRENT_
     accelerate_cutoff = params["accelerate_cutoff"]
 
     # steering the kart towards aim_point
-    steering_angle = aim_point[0] * steering_scalar + aim_point[1] * y_scalar
+    steering_angle = aim_point[0] * steering_scalar
 
     action.steer = np.clip(steering_angle, -1, 1)
 
@@ -79,8 +78,11 @@ def simple_control(aim_point: float, current_vel: float, params: dict = CURRENT_
 
 SIMPLE_SIZE = 4
 CURRENT_BEST_SIMPLE_2_PARAMS = {
-    "drift_cutoff": 0.9220483178471008,
-    "brake_cutoff": 0.5045246985540843,
+    "aim_steering": 0.21101163039466375,
+    "vel_steering": 0.521437424136858,
+    "drift_cutoff": 0.5474835823774674,
+    "brake_cutoff": 0.49755886788365955,
+    "vel_max": 19.620181982924144,
 }
 
 
