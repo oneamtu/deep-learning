@@ -45,7 +45,7 @@ def split_data_files(dataset_path=DATASET_PATH, perc=0.2):
     import random
     import shutil
 
-    train_dir = os.path.join(dataset_path, "train")
+    train_dir = f"{dataset_path}/train"
     if not os.path.exists(train_dir):
         os.makedirs(train_dir)
         [shutil.move(os.path.join(dataset_path, file_path), train_dir) for file_path in os.listdir(dataset_path)]
@@ -56,7 +56,7 @@ def split_data_files(dataset_path=DATASET_PATH, perc=0.2):
     random.shuffle(files)
     slice_point = int(len(files) * perc)
 
-    valid_dir = "drive_data/valid"
+    valid_dir = f"{dataset_path}/valid"
     if os.path.exists(valid_dir):
         return
 
