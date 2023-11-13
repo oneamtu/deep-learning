@@ -226,9 +226,14 @@ class PyTux:
 
             self.k.step(action)
             t += 1
+            how_far = kart.overall_distance / track.length
+
+            if steps < 100 and how_far > 0.8:
+                how_far = 0
+
             if train is not None and t % 10 == 0:
                 train.report(
-                    {"steps": t, "how_far": kart.overall_distance / track.length, "rescue_count": rescue_count}
+                    {"steps": t, "how_far": how_far, "rescue_count": rescue_count}
                 )
             if False:
                 text = "\n".join(
@@ -245,7 +250,7 @@ class PyTux:
 
             imageio.mimwrite(filename, frames, fps=30, bitrate=1000000)
 
-        return t, kart.overall_distance / track.length, rescue_count
+        return t, how_far, rescue_count
 
     # rollouts = [Rollout.remote(50, 50, hd=False, render=False, frame_skip=5) for i in range(10)]
     # def rollout_many(many_agents, **kwargs):

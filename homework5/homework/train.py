@@ -8,6 +8,8 @@ from . import dense_transforms
 import timeit
 from torch.profiler import profile, record_function, ProfilerActivity
 
+# train on new data, try gamma
+# use heatmap, not just argmax loss
 
 def train(args):
     from os import path
@@ -66,6 +68,10 @@ def train(args):
 
             predicted_heatmaps = model.heatmap(train_images)
             predicted_labels = spatial_argmax(predicted_heatmaps)
+
+            import pdb
+
+            pdb.set_trace()
 
             loss = torch.nn.MSELoss().forward(predicted_labels, train_labels)
 

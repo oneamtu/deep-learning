@@ -2,6 +2,8 @@ import pystk
 import numpy as np
 import datetime
 
+from planner import load_model
+
 # vision
 # nitro?
 # simple control 2
@@ -386,6 +388,11 @@ if __name__ == "__main__":
 
             parameterized_control = partial(control, params=params, control_type=args.model)
 
+            if args.planner:
+                planner = load_model().eval()
+            else:
+                planner = None
+
             # TODO: how to track multiple tracks
             for t in args.track:
                 steps, how_far, rescue_count = pytux.rollout(
@@ -395,6 +402,7 @@ if __name__ == "__main__":
                     verbose=args.verbose,
                     train=train,
                     break_on_rescue=True,
+                    planner=planner,
                 )
 
             PyTux._singleton = None
@@ -536,6 +544,7 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("-t", "--test_run", action="store_true")
     parser.add_argument("-g", "--graphics", action="store_true")
+    parser.add_argument("-p", "--planner", action="store_true")
     parser.add_argument("--search_alg", default="random")
     parser.add_argument("--model", default="simple")
     args = parser.parse_args()
