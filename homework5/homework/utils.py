@@ -196,6 +196,13 @@ class PyTux:
                 if rescue_count > 0 and break_on_rescue:
                     break
 
+            self.k.step(action)
+            t += 1
+            how_far = kart.overall_distance / track.length
+
+            if t < 100 and how_far > 0.8:
+                how_far = 0
+
             if verbose:
                 ax.clear()
                 ax.imshow(self.k.render_data[0].image)
@@ -215,7 +222,7 @@ class PyTux:
                     (
                         f"Im Points: X: {aim_point_image[0]:.4f}, Y: {aim_point_image[1]:.4f}, Vel: {current_vel:.4f}",
                         f"Last action: A: {action.acceleration:.4f}, B: {action.brake}, D: {action.drift}, S: {action.steer:.4f}",
-                        f"steps: {t}, how_far: {(kart.overall_distance / track.length):.4f}, rescue_count: {rescue_count}",
+                        f"steps: {t}, how_far: {how_far:.4f}, rescue_count: {rescue_count}",
                         f"accuracy: {dist}, total accuracy; {(total_accuracy / t):.2f}",
                     )
                 )
@@ -229,13 +236,6 @@ class PyTux:
                 im = data.reshape((int(h), int(w), -1))
 
                 frames.append(im)
-
-            self.k.step(action)
-            t += 1
-            how_far = kart.overall_distance / track.length
-
-            if t < 100 and how_far > 0.8:
-                how_far = 0
 
             if train is not None and t % 10 == 0:
                 train.report(
