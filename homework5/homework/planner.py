@@ -170,8 +170,8 @@ if __name__ == "__main__":
         planner = load_model().eval()
         pytux = PyTux()
         for t in args.track:
-            steps, how_far = pytux.rollout(t, control, planner=planner, max_frames=1000, verbose=args.verbose)
-            print(steps, how_far)
+            steps, how_far, rescues = pytux.rollout(t, control, planner=planner, max_frames=1000, verbose=args.verbose)
+            print(steps, how_far, rescues)
         pytux.close()
 
     parser = ArgumentParser("Test the planner")
