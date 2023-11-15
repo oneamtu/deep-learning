@@ -78,11 +78,11 @@ def simple_control(aim_point: float, current_vel: float, params: dict = CURRENT_
 
 SIMPLE_SIZE = 4
 CURRENT_BEST_SIMPLE_2_PARAMS = {
-    "aim_steering": 2.2150826050618075,
-    "vel_steering": 0.8380516171173772,
-    "drift_cutoff": 0.8621519983696911,
-    "brake_cutoff": 0.9461188955414697,
-    "vel_max": 22.462077434700024,
+    "aim_steering": 3.0,
+    "vel_steering": 0.7764861051171283,
+    "drift_cutoff": 0.7464604770622244,
+    "brake_cutoff": 0.5275958209802689,
+    "vel_max": 20.199116993017867,
 }
 
 
@@ -423,7 +423,6 @@ if __name__ == "__main__":
                             "rescue_count": rescue_count + total_rescue_count,
                         }
                     )
-                    print(f"{how_far + total_how_far} in {steps + total_steps} steps; {rescue_count} rescues")
 
             for t in args.track:
                 steps, how_far, rescue_count = pytux.rollout(
@@ -438,7 +437,6 @@ if __name__ == "__main__":
                 total_steps += steps
                 total_how_far += how_far
                 total_rescue_count += rescue_count
-                print(f"Starting track {t}")
 
             PyTux._singleton = None
             pytux.close()
@@ -466,11 +464,11 @@ if __name__ == "__main__":
         if args.model == "simple_2":
             best_points = [CURRENT_BEST_SIMPLE_2_PARAMS]
             param_space = {
-                "aim_steering": tune.uniform(0.0, 3.0),
+                "aim_steering": tune.uniform(2.0, 5.0),
                 "vel_steering": tune.uniform(0.0, 1.0),
-                "drift_cutoff": tune.uniform(0.5, 1.0),
-                "brake_cutoff": tune.uniform(0.2, 1.0),
-                "vel_max": tune.uniform(10.0, 25.0),
+                "drift_cutoff": tune.uniform(0.5, 1.5),
+                "brake_cutoff": tune.uniform(0.2, 1.5),
+                "vel_max": tune.uniform(20.0, 30.0),
             }
         elif args.model == "linear":
             best_points = [CURRENT_BEST_LINEAR_PARAMS]
@@ -522,19 +520,19 @@ if __name__ == "__main__":
             )
             search_alg = None
         elif args.search_alg == "random":
-            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=10*args.max_steps, grace_period=50)
+            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=10 * args.max_steps, grace_period=50)
 
             from ray.tune.search.basic_variant import BasicVariantGenerator
 
             search_alg = BasicVariantGenerator(points_to_evaluate=best_points)
         elif args.search_alg == "bayes":
-            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=10*args.max_steps, grace_period=50)
+            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=10 * args.max_steps, grace_period=50)
 
             from ray.tune.search.bayesopt import BayesOptSearch
 
             search_alg = BayesOptSearch(metric="how_far", mode="max", points_to_evaluate=best_points)
         elif args.search_alg == "hyperopt":
-            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=10*args.max_steps, grace_period=50)
+            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=10 * args.max_steps, grace_period=50)
 
             from ray.tune.search.hyperopt import HyperOptSearch
 
@@ -556,7 +554,7 @@ if __name__ == "__main__":
 
             search_alg = TuneBOHB(metric="how_far", mode="max", points_to_evaluate=best_points)
         elif args.search_alg == "ax":
-            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=10*args.max_steps, grace_period=50)
+            scheduler = tune.schedulers.ASHAScheduler(time_attr="steps", max_t=10 * args.max_steps, grace_period=50)
 
             from ray.tune.search.ax import AxSearch
 
